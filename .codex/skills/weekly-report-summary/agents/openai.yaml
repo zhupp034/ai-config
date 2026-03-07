@@ -1,0 +1,4 @@
+interface:
+  display_name: "周报总结"
+  short_description: "先生成前端周报草稿，再交给润色 skill 做语义润色"
+  default_prompt: "Use $weekly-report-summary to generate the weekly report draft first, then use $report-polisher in weekly_frontend mode if a polished final version is needed."

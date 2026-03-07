@@ -88,8 +88,13 @@ def parse_args():
         help="Write the generated summary into a weekly markdown file.",
     )
     parser.add_argument(
+        "--write-json-report",
+        action="store_true",
+        help="Write the structured JSON report alongside the markdown report.",
+    )
+    parser.add_argument(
         "--report-dir",
-        help="Directory used for weekly summary markdown files. Defaults to /Users/zpp/Desktop/workspace/weekly-report.",
+        help="Directory used for weekly summary markdown files. Defaults to /Users/zpp/Desktop/workspace/git-weekly-report.",
     )
     return parser.parse_args()
 
@@ -608,7 +613,7 @@ def render_summary(report):
 def resolve_report_dir(root, report_dir):
     if report_dir:
         return Path(report_dir).resolve()
-    return Path("/Users/zpp/Desktop/workspace/weekly-report")
+    return Path("/Users/zpp/Desktop/workspace/git-weekly-report")
 
 
 def write_weekly_report(report_text, report, root, report_dir):
@@ -619,16 +624,27 @@ def write_weekly_report(report_text, report, root, report_dir):
     return file_path
 
 
-def sync_report_repo(file_path, report):
-    repo_dir = file_path.parent
+def write_structured_report(report, root, report_dir):
+    target_dir = resolve_report_dir(root, report_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    file_path = target_dir / f"{extract_report_date(report)}.json"
+    file_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return file_path
+
+
+def sync_report_repo(file_paths, report):
+    if not file_paths:
+        return "[report-sync-skipped] 没有可同步的报告文件"
+
+    repo_dir = file_paths[0].parent
     if not (repo_dir / ".git").exists():
-        return "[report-sync-skipped] weekly-report 目录不是 git 仓库"
+        return "[report-sync-skipped] git-weekly-report 目录不是 git 仓库"
 
     remote_result = git_run(repo_dir, ["remote"])
     if remote_result.returncode != 0 or not remote_result.stdout.strip():
         return "[report-sync-skipped] 未配置 git 远端仓库"
 
-    git_run(repo_dir, ["add", file_path.name])
+    git_run(repo_dir, ["add", *[path.name for path in file_paths]])
     staged = git_run(repo_dir, ["diff", "--cached", "--name-only"])
     if staged.returncode != 0:
         return f"[report-sync-failed] {staged.stderr.strip() or 'git diff --cached failed'}"
@@ -755,9 +771,16 @@ def main():
 
     if args.write_report:
         file_path = write_weekly_report(output, report, root, args.report_dir)
+        written_paths = [file_path]
+        json_path = None
+        if args.write_json_report:
+            json_path = write_structured_report(report, root, args.report_dir)
+            written_paths.append(json_path)
         print(output, end="" if output.endswith("\n") else "\n")
         print(f"\n[report-written] {file_path}")
-        print(sync_report_repo(file_path, report))
+        if json_path:
+            print(f"[report-json-written] {json_path}")
+        print(sync_report_repo(written_paths, report))
     else:
         print(output, end="" if output.endswith("\n") else "\n")
     return 0

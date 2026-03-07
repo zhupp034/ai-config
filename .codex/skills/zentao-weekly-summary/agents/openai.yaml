@@ -1,0 +1,4 @@
+interface:
+  display_name: "禅道周报"
+  short_description: "登录禅道提取本周动态并生成可合并到周报中的工作备注"
+  default_prompt: "Use -weekly-summary to log in to ZenTao, collect this week's activity, and write a weekly summary note."

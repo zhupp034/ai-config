@@ -22,7 +22,7 @@ Scan the current directory for git repositories, collect commits for a target we
    - important fixes, features, refactors, or releases
    - repos with no activity
 4. When the user wants a saved report, run with `--write-report`.
-   The script writes to `/Users/zpp/Desktop/workspace/weekly-report/<generated-date>.md` by default, using the report generation date as the filename and overwriting that day's file on repeated runs. When the output directory is a git repo with a configured remote, it also auto-commits and pushes the updated report.
+   The script writes to `/Users/zpp/Desktop/workspace/git-weekly-report/<generated-date>.md` by default, using the report generation date as the filename and overwriting that day's file on repeated runs. When the output directory is a git repo with a configured remote, it also auto-commits and pushes the updated report.
 5. Write the final report in concise business language, combining git messages with the actual change content rather than repeating raw commit subjects.
 6. Call out uncertainty when commit messages are too vague to support a reliable summary.
 7. Before generating the final wording, read the shared glossary at `/Users/zpp/.codex/memories/term-glossary.json` first, then fall back to `term-glossary.json` in the skill root for skill-specific terms.
@@ -50,7 +50,7 @@ Use `--include-inactive` when the report must list repositories with no commits.
 Use `--include-merges` only when merge commits themselves are meaningful to the report.
 Use `--current-branch-only` only when the user explicitly wants to ignore commits from other branches.
 Use `--write-report` to write the generated summary into a markdown file.
-Use `--report-dir /custom/path` when the weekly files should be stored somewhere other than `/Users/zpp/Desktop/workspace/weekly-report`.
+Use `--report-dir /custom/path` when the weekly files should be stored somewhere other than `/Users/zpp/Desktop/workspace/git-weekly-report`.
 Use `--extra-root /another/path` when an extra directory outside the default sibling scan should also be included.
 
 Example:

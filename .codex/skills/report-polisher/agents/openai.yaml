@@ -1,0 +1,4 @@
+interface:
+  display_name: "报告润色"
+  short_description: "按共享语义规则润色前端周报月报日报草稿"
+  default_prompt: "Use $report-polisher in weekly_frontend, monthly_frontend, or daily_frontend mode to polish this frontend report draft while preserving the Markdown structure, all supported facts, and key technical details."
