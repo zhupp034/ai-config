@@ -1,0 +1,3 @@
+interface:
+  display_name: "会议快速构建"
+  short_description: "Build meeting locally and submit dist artifacts"

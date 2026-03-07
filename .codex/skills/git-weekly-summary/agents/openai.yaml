@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Weekly Summary"
+  short_description: "Summarize weekly commits across repos"
+  default_prompt: "Use $git-weekly-summary to scan repositories and summarize this week's git commits."

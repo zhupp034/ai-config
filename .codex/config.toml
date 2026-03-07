@@ -1,0 +1,16 @@
+model_reasoning_effort = "medium"
+model = "gpt-5.4"
+
+[projects."/Users/zpp/Desktop/gitlab/cnstrong-WebRTC"]
+trust_level = "trusted"
+
+[projects."/Users/zpp"]
+trust_level = "trusted"
+
+[notice.model_migrations]
+"gpt-5.2-codex" = "gpt-5.3-codex"
+
+[mcp_servers.playwright]
+type = "stdio"
+command = "npx"
+args = ["@playwright/mcp@latest"]
