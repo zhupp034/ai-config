@@ -1,0 +1,4 @@
+interface:
+  display_name: "同步 AI 配置"
+  short_description: "同步本地 Codex 可移植配置并自动提交推送远端仓库"
+  default_prompt: "Use $sync-ai-config to sync portable Codex configuration changes and push them to the remote repository."
