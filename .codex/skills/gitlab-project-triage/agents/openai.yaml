@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitLab 项目分级"
+  short_description: "批量扫描本地仓库并给出 AI 治理优先级"
+  default_prompt: "Use $gitlab-project-triage to scan a local GitLab workspace, classify repositories by governance priority, and recommend which projects need AI init or audit first."

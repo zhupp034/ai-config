@@ -1,0 +1,4 @@
+interface:
+  display_name: "提交质量教练"
+  short_description: "帮助拆分有意义的 commit 并生成规范提交信息"
+  default_prompt: "Use $meaningful-commit-coach to inspect the current repository changes, separate meaningful commit groups, and draft Conventional Commit messages."

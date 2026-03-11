@@ -1,0 +1,4 @@
+interface:
+  display_name: "任务交付流程"
+  short_description: "执行需求时同步维护计划、评审、测试与交付证据"
+  default_prompt: "Use $task-delivery-workflow to keep this repository task auditable while implementing it, including plan, review, testing, retest, and final delivery notes."

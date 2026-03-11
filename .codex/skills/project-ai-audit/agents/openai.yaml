@@ -1,0 +1,4 @@
+interface:
+  display_name: "项目审计AI"
+  short_description: "复核单仓是否达到 AI 协作审计标准"
+  default_prompt: "Use $project-ai-audit to audit whether this repository actually meets AI collaboration governance expectations and identify concrete gaps."

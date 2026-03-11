@@ -1,3 +1,10 @@
+# Global Conventions
+
+- 当用户定义了术语解释时，在总结、报告和生成文档中优先采用这些解释。
+- 术语映射应尽量维护在可持续更新的 glossary 文件中，避免直接硬编码到 prompt 或生成文本里。
+- 优先使用共享术语表 `/Users/zpp/.codex/memories/term-glossary.json`；skill 本地 glossary 仅作为兜底或 skill 专用扩展使用。
+- 如果项目内存在相应的 Markdown 说明文件（如 `README.md`、模块说明、使用文档等），每次改动后都应评估是否需要同步更新；如未更新，需说明原因。
+
 # Git Commit Rules
 
 - Git 提交信息必须使用 Conventional Commits。
