@@ -1,0 +1,4 @@
+version: 1
+display_name: 网页登录自动化
+short_description: 登录任意网页并复用已登录会话执行后续操作
+default_prompt: Use $web-login-automation to log into a website with account/password, verify that login succeeded, then continue the requested browser actions in the same authenticated session.
