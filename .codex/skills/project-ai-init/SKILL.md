@@ -1,39 +1,46 @@
 ---
 name: project-ai-init
-description: Initialize a single repository for AI-assisted development. Use when a repository is missing AGENTS.md, testing guidance, AI collaboration workflow docs, or task/report templates, and the goal is to create only the missing baseline artifacts.
+description: Initialize a single repository for AI-assisted development with a reusable, project-agnostic documentation baseline. Use when a repository is missing AGENTS.md, testing guidance, collaboration workflow docs, or delivery templates, and the goal is to create only missing artifacts.
 ---
 
 # Project AI Init
 
 Use this skill for one repository at a time.
 
+## When To Use
+
+- The repository is missing baseline collaboration docs and needs a lightweight bootstrap.
+- The goal is to add missing files only, not to rewrite an already-initialized repository.
+- The repository may use any stack. Detect real signals first instead of assuming frontend, Node.js, or a specific business domain.
+
+If the repository already has the documents but their quality is weak, hand off to `$project-ai-audit` instead of forcing another initialization pass.
+
 ## Workflow
 
-1. Confirm the repository root and read minimal context.
-- Read `package.json` or equivalent build files.
-- Read top-level `README.md` and existing `AGENTS.md` if present.
-- Detect project signals from real files instead of assumptions.
+1. Read minimal repo context.
+- Open top-level `README.md`, existing `AGENTS.md`, and the primary build file (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle*`, etc.).
+- Detect stack, test entrypoints, documentation layout, and domain signals from actual files.
 
-2. Run the initialization check.
+2. Run the baseline check.
 - Execute `scripts/check_ai_init.sh <repo-root>`.
-- Treat the script output as the source of truth for missing baseline artifacts.
+- Treat the script output as the source of truth for which artifacts are missing or still incomplete.
 
-3. Preview and create only missing docs.
-- Execute `scripts/auto_init_docs.sh <repo-root> dry-run` first.
-- Execute `scripts/auto_init_docs.sh <repo-root> apply` only after reviewing the preview.
-- Never overwrite existing project docs by default.
+3. Preview before writing.
+- Execute `scripts/auto_init_docs.sh <repo-root> dry-run`.
+- Review the proposed files and README navigation change.
 
-4. Refine generated placeholders only where needed.
-- Replace generic commands or workflow text with project-real commands, directories, and risks.
-- Keep edits minimal and repository-specific.
-- Ensure generated rules include:
-  - Key-file changes must sync Markdown docs.
-  - If no corresponding Markdown exists, create one first.
-  - Run local `skills/md-doc-sync/SKILL.md` check before commit.
+4. Create only missing docs.
+- Execute `scripts/auto_init_docs.sh <repo-root> apply`.
+- Never overwrite existing docs by default.
 
-5. Re-check and summarize.
+5. Refine generated placeholders.
+- Replace placeholders with real commands, directories, module names, and risks from the repository.
+- Keep the wording project-agnostic unless the repository itself uses domain-specific language.
+- Preserve the repository's dominant documentation language when it is obvious; otherwise default governance docs to Chinese.
+
+6. Re-check and summarize.
 - Re-run `scripts/check_ai_init.sh <repo-root>`.
-- Report which files were created, which were skipped, and what still needs manual refinement.
+- Report which files were created, which were skipped, and which placeholders still need manual follow-up.
 
 ## Artifacts
 
@@ -51,26 +58,25 @@ Recommended:
 - `docs/LINT_AND_BUILD_KNOWN_ISSUES.md`
 - `skills/md-doc-sync/SKILL.md`
 
-Conditional when the repository contains matching signals:
-- `docs/BUSINESS_SCENARIO_MAP.md`
+Conditional when matching signals are detected:
+- `docs/DOMAIN_CONTEXT.md`
 - `docs/ROUTES_AND_ACCESS.md`
+- `docs/EVENT_AND_MESSAGE_FLOW.md`
+- `docs/INTEGRATION_DEPENDENCIES.md`
+
+Legacy compatibility accepted during checks:
+- `docs/BUSINESS_SCENARIO_MAP.md`
 - `docs/SOCKET_PROTOCOL_MAP.md`
 - `docs/SDK_USAGE.md`
-
-## Language
-
-- Governance and collaboration Markdown should default to Chinese.
-- Keep code symbols, commands, file paths, environment variables, API names, and Conventional Commit types in English.
-- For single-repo commit guidance, prefer Chinese commit subjects and descriptions while keeping the Conventional Commit `type(scope)` prefix in English.
-- Commit guidance should encourage detailed messages that explain change intent, affected scope, and key context instead of overly short summaries.
-- If a repository already has a clearly external or English-first technical README, preserve that style for API-facing sections and keep governance additions in Chinese when practical.
 
 ## Rules
 
 - Prefer minimal diff.
 - Do not delete or rewrite existing docs unless explicitly requested.
-- Focus on baseline AI collaboration setup, not audit scoring or multi-repo governance.
-- If the repository already looks initialized but low quality, hand off to `$project-ai-audit` instead of forcing more initialization.
+- Focus on baseline AI collaboration setup, not audit scoring or organization-wide governance.
+- Generated commit guidance must follow the active repository rules. If no project rule exists, still prefer Chinese-first summary/body even for English-first repositories, while keeping the Conventional Commits `type(scope)` prefix in English. The generated guidance should require a body after the summary and explain change object, intent, impact, risks, and validation.
+- Generated testing guidance must use discovered commands when available and clearly mark placeholders when not.
+- Generated workflow docs must keep the Markdown sync rule: key file changes require Markdown updates, and missing docs should be created before commit.
 
 ## Resources
 

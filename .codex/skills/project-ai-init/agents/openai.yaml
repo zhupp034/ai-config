@@ -1,4 +1,4 @@
 interface:
-  display_name: "项目初始化AI"
-  short_description: "补齐单仓 AI 协作文档基线，仅创建缺失文件"
-  default_prompt: "Use $project-ai-init to check whether this repository is missing baseline AI collaboration docs and create only the missing artifacts."
+  display_name: "通用项目初始化"
+  short_description: "补齐单仓 AI 协作与交付文档基线，仅创建缺失文件"
+  default_prompt: "Use $project-ai-init to inspect a single repository, detect missing AI collaboration baseline docs, and create only the missing artifacts with project-real placeholders."

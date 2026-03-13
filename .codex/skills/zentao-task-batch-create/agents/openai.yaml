@@ -1,4 +1,4 @@
 version: 1
-display_name: 禅道批量建任务
-short_description: 登录本地禅道并打开目标页，或按迭代/父任务批量创建任务
-default_prompt: Use $zentao-task-batch-create to log into the local ZenTao site with account/password, optionally open a target page, and create ZenTao tasks from a pasted work-item list. Ask for the iteration ID first, and if the user provides a parent task ID then create the tasks under that parent task.
+display_name: 禅道任务处理
+short_description: 登录禅道后批量建任务、更新任务，或按 git 提交自动完成匹配任务
+default_prompt: Use $zentao-task-batch-create to log into the local ZenTao site with account/password, then create or update ZenTao tasks, or compare pending ZenTao tasks with real git commits under the local gitlab directory and finish the matched tasks on the corresponding commit date.

@@ -11,6 +11,18 @@ trust_level = "trusted"
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
 [mcp_servers.playwright]
-type = "stdio"
 command = "npx"
 args = ["@playwright/mcp@latest"]
+
+[mcp_servers.-]
+url = "https://anycross.feishu.cn/mcp/openplatform_query/stream?key=nZ7yDqc1_fg6hSBAGJypqmUnCAgWNHIiqwYZ2qGjfmZ4kJfBmqGt_riGvR0n9ZLP"
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+
+[mcp_servers.chrome-devtools]
+command = "npx"
+args = ["chrome-devtools-mcp@latest"]
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"

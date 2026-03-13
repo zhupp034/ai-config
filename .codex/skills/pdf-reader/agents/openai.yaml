@@ -1,0 +1,4 @@
+interface:
+  display_name: "PDF Reader"
+  short_description: "Read PDFs with pdftotext and pdfinfo"
+  default_prompt: "Read this PDF, extract the useful text, and summarize key content with page-aware notes when needed."

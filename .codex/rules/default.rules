@@ -33,3 +33,7 @@ prefix_rule(pattern=["curl", "-s", "http://192.168.20.9/pro/task-delete-138597-y
 prefix_rule(pattern=["curl", "-s", "http://192.168.20.9/pro/task-view-138597.html?zentaosid=ct8v58b8u26ot6thttkkt9b5q0"], decision="allow")
 prefix_rule(pattern=["curl", "-i", "-s", "http://192.168.20.9/pro/task-delete-1205-138597.html?zentaosid=ct8v58b8u26ot6thttkkt9b5q0"], decision="allow")
 prefix_rule(pattern=["curl", "-i", "-s", "http://192.168.20.9/pro/task-delete-1205-138597-yes.html?zentaosid=ct8v58b8u26ot6thttkkt9b5q0"], decision="allow")
+prefix_rule(pattern=["curl", "-s", "http://192.168.20.9/pro/task-view-138613.html?zentaosid=ct8v58b8u26ot6thttkkt9b5q0"], decision="allow")
+prefix_rule(pattern=["curl", "-s", "http://192.168.20.9/pro/task-view-138599.html?zentaosid=ct8v58b8u26ot6thttkkt9b5q0"], decision="allow")
+prefix_rule(pattern=["chmod", "+x"], decision="allow")
+prefix_rule(pattern=["npx", "skills", "add"], decision="allow")

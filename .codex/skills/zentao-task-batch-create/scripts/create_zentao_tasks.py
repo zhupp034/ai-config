@@ -131,6 +131,51 @@ class ZenTaoClient:
         if SUCCESS_MARKER not in response:
             raise RuntimeError(f"ZenTao create failed for '{item.title}': {response[:400]}")
 
+    def update_task(
+        self,
+        *,
+        task_id: int,
+        parent_task_id: int | None,
+        assigned_to: str,
+        task_type: str,
+        pri: int,
+        item: ScheduledItem,
+        comment: str,
+    ) -> None:
+        if not self.session_id:
+            raise RuntimeError("Not logged in")
+
+        url = urllib.parse.urljoin(
+            self.base_url,
+            f"task-edit-{task_id}.html?zentaosid={urllib.parse.quote(self.session_id)}",
+        )
+        form = {
+            "module": "0",
+            "story": "",
+            "parent": "" if parent_task_id is None else str(parent_task_id),
+            "assignedTo": assigned_to,
+            "type": task_type,
+            "status": "wait",
+            "pri": str(pri),
+            "name": item.title,
+            "desc": "",
+            "comment": comment,
+            "estStarted": item.start.isoformat(),
+            "deadline": item.deadline.isoformat(),
+            "estimate": format_number(item.estimate),
+            "left": format_number(item.estimate),
+            "consumed": "0",
+            "lastEditedDate": "",
+        }
+        encoded = urllib.parse.urlencode(form, doseq=True).encode("utf-8")
+        response = self._open(
+            url,
+            data=encoded,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        if f"task-view-{task_id}.html" not in response:
+            raise RuntimeError(f"ZenTao update failed for #{task_id} '{item.title}': {response[:400]}")
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create ZenTao tasks from a work-item list.")
@@ -149,6 +194,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pri", type=int, default=3, help="ZenTao task priority, default: 3")
     parser.add_argument("--base-url", default=os.environ.get("ZENTAO_BASE_URL", DEFAULT_BASE_URL))
     parser.add_argument("--input-file", help="Read work items from this file instead of stdin")
+    parser.add_argument(
+        "--include-weekends",
+        action="store_true",
+        help="Schedule on calendar days instead of working days",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print schedule without creating tasks")
     return parser.parse_args()
 
@@ -179,7 +229,25 @@ def parse_work_items(raw_text: str) -> list[WorkItem]:
     return items
 
 
-def schedule_items(items: Iterable[WorkItem], start_date: dt.date, hours_per_day: float) -> list[ScheduledItem]:
+def date_from_offset(start_date: dt.date, offset: int, include_weekends: bool) -> dt.date:
+    if include_weekends:
+        return start_date + dt.timedelta(days=offset)
+
+    current = start_date
+    counted = 0
+    while counted < offset:
+        current += dt.timedelta(days=1)
+        if current.weekday() < 5:
+            counted += 1
+    return current
+
+
+def schedule_items(
+    items: Iterable[WorkItem],
+    start_date: dt.date,
+    hours_per_day: float,
+    include_weekends: bool = False,
+) -> list[ScheduledItem]:
     if hours_per_day <= 0:
         raise ValueError("hours_per_day must be positive")
 
@@ -195,8 +263,8 @@ def schedule_items(items: Iterable[WorkItem], start_date: dt.date, hours_per_day
             ScheduledItem(
                 title=item.title,
                 estimate=item.estimate,
-                start=start_date + dt.timedelta(days=start_day_offset),
-                deadline=start_date + dt.timedelta(days=end_day_offset),
+                start=date_from_offset(start_date, start_day_offset, include_weekends),
+                deadline=date_from_offset(start_date, end_day_offset, include_weekends),
             )
         )
         used_hours = end_hour
@@ -255,7 +323,12 @@ def main() -> int:
     start_date = dt.date.fromisoformat(args.start_date)
     raw_text = load_input(args.input_file)
     work_items = parse_work_items(raw_text)
-    scheduled_items = schedule_items(work_items, start_date, args.hours_per_day)
+    scheduled_items = schedule_items(
+        work_items,
+        start_date,
+        args.hours_per_day,
+        include_weekends=args.include_weekends,
+    )
     scheduled_items = apply_workday_shift(scheduled_items, args.shift_workdays)
 
     print_schedule(scheduled_items)
