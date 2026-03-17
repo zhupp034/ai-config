@@ -1,5 +1,6 @@
 # Global Conventions
 
+- 先读取记忆文件 `/Users/zpp/.codex/memories/long-memory.md`
 - 当用户定义了术语解释时，在总结、报告和生成文档中优先采用这些解释。
 - 术语映射应尽量维护在可持续更新的 glossary 文件中，避免直接硬编码到 prompt 或生成文本里。
 - 优先使用共享术语表 `/Users/zpp/.codex/memories/term-glossary.json`；skill 本地 glossary 仅作为兜底或 skill 专用扩展使用。
@@ -10,7 +11,7 @@
 - Git 提交信息必须使用 Conventional Commits。
 - 允许的 type: feat, fix, docs, refactor, test, chore, build, ci.
 - 提交信息格式：`type(scope): summary`；如果没有明确 scope，可使用 `type: summary`。
-- `summary` 使用英文，动词短语，小写开头，尽量不超过 72 个字符。
+- `summary` 使用中文，内容详细。
 - 未经用户明确要求，不主动执行 `git commit`。
 - 如需提交，先检查变更范围，避免把无关文件一并提交。
 - 对文件内容变动的总结不能遗漏关键改动，至少覆盖实际变更的主要文件和行为影响。

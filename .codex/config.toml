@@ -1,4 +1,4 @@
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "medium"
 model = "gpt-5.4"
 
 [projects."/Users/zpp/Desktop/gitlab/cnstrong-WebRTC"]
@@ -11,6 +11,7 @@ trust_level = "trusted"
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
 [mcp_servers.playwright]
+type = "stdio"
 command = "npx"
 args = ["@playwright/mcp@latest"]
 
@@ -34,3 +35,6 @@ enabled = true
 
 [mcp_servers.apifox_user_api.env]
 APIFOX_ACCESS_TOKEN = "afxp_8dc548PQmlpruCsbLKacOfccXIwXdQQqvViD"
+
+[features]
+multi_agent = true

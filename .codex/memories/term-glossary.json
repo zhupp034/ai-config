@@ -21,4 +21,9 @@
   "ci.test.mjs": "自动化测试",
   "UPLOAD_SUMMARY.md": "项目说明",
   "htmlEntitiesToEmoji": "表情转换能力"
+  ,
+  "ltProxy": "乐淘请求代理前缀（开发阶段使用的 /ltProxy 路径）",
+  "replaceProxyUrl": "代理 URL 替换方法（用于把 /ltProxy 请求替换为线上目标域名）",
+  "setReplaceUrl": "配置/设置替换域名的方法（配合 replaceProxyUrl 生效）",
+  "letao.cnstrong.cn": "乐淘线上请求域名（/ltProxy 线上替换目标）"
 }
