@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -12,6 +13,55 @@ from pathlib import Path
 SKIP_DIRS = {".git", "node_modules", ".idea", ".vscode"}
 SHARED_GLOSSARY_PATH = Path("/Users/zpp/.codex/memories/term-glossary.json")
 LOCAL_GLOSSARY_PATH = Path(__file__).resolve().parent.parent / "term-glossary.json"
+GENERIC_SUBJECTS = {
+    "update",
+    "updates",
+    "cleanup",
+    "clean up",
+    "refactor",
+    "fix",
+    "changes",
+    "misc",
+    "wip",
+}
+DIFF_NOISE_TOKENS = {
+    "const",
+    "let",
+    "var",
+    "return",
+    "true",
+    "false",
+    "null",
+    "undefined",
+    "import",
+    "from",
+    "export",
+    "default",
+    "function",
+    "async",
+    "await",
+    "string",
+    "number",
+    "boolean",
+    "object",
+    "array",
+    "value",
+    "props",
+    "state",
+    "data",
+    "result",
+    "config",
+    "options",
+    "logger",
+    "console",
+    "info",
+    "error",
+    "warn",
+    "test",
+    "tests",
+    "describe",
+    "expect",
+}
 
 
 def parse_args():
@@ -295,6 +345,11 @@ def humanize_summary_phrase(subject):
     return phrase
 
 
+def is_generic_summary_phrase(phrase):
+    normalized = normalize_summary_subject(phrase).strip().lower()
+    return normalized in GENERIC_SUBJECTS
+
+
 def normalize_summary_subject(subject):
     cleaned = sanitize_subject(subject)
     if ":" in cleaned:
@@ -302,6 +357,87 @@ def normalize_summary_subject(subject):
         if prefix.lower() in {"feat", "fix", "refactor", "chore", "build", "docs", "test", "perf"}:
             cleaned = rest.strip()
     return cleaned.lstrip("- ").strip()
+
+
+def extract_diff_hints(diff_text, limit=3):
+    counts = defaultdict(int)
+    order = []
+    for raw_line in diff_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(("+++", "---", "@@")):
+            continue
+        if not line.startswith(("+", "-")):
+            continue
+        content = line[1:].strip()
+        if not content or content.startswith(("import ", "export ", "}")):
+            continue
+        for token in re.findall(r"[A-Za-z][A-Za-z0-9_]{2,}|[\u4e00-\u9fff]{2,}", content):
+            if token.lower() in DIFF_NOISE_TOKENS:
+                continue
+            if token not in counts:
+                order.append(token)
+            counts[token] += 1
+
+    def token_priority(token):
+        has_camel = any(char.isupper() for char in token[1:])
+        is_chinese = bool(re.search(r"[\u4e00-\u9fff]", token))
+        return (
+            counts[token],
+            1 if has_camel else 0,
+            1 if is_chinese else 0,
+            len(token),
+            -order.index(token),
+        )
+
+    ranked = sorted(order, key=token_priority, reverse=True)
+    return ranked[:limit]
+
+
+def extract_file_hints(files, limit=2):
+    hints = []
+    for path in files:
+        stem = Path(path).stem
+        if not stem or stem.lower() in DIFF_NOISE_TOKENS:
+            continue
+        if any(char.isupper() for char in stem[1:]) or re.search(r"[\u4e00-\u9fff]", stem):
+            hints.append(stem)
+    deduped = []
+    seen = set()
+    for hint in hints:
+        lowered = hint.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        deduped.append(hint)
+        if len(deduped) >= limit:
+            break
+    return deduped
+
+
+def summarize_commit_phrase(commit):
+    subject_phrase = humanize_summary_phrase(commit["subject"])
+    file_hints = extract_file_hints(commit.get("files", []))
+    diff_hints = extract_diff_hints(commit.get("diff", ""))
+    ordered_hints = []
+    seen_hints = set()
+    for hint in [*file_hints, *diff_hints]:
+        lowered = hint.lower()
+        if lowered in seen_hints:
+            continue
+        seen_hints.add(lowered)
+        ordered_hints.append(hint)
+    category = classify_subject(commit["subject"])
+
+    if ordered_hints and (is_generic_summary_phrase(subject_phrase) or looks_mostly_ascii(subject_phrase)):
+        hint_text = "、".join(ordered_hints[:2])
+        if category == "fix":
+            return f"修复{hint_text}相关问题"
+        if category == "feat":
+            return f"新增或完善{hint_text}相关能力"
+        if category in {"refactor", "chore", "build", "other"}:
+            return f"调整{hint_text}相关实现"
+
+    return subject_phrase
 
 
 def is_noise_commit(subject):
@@ -388,6 +524,7 @@ def collect_repo_commits(repo, since, until, author_name, author_email, include_
             continue
         files_output = git_output(repo, ["show", "--pretty=format:", "--name-only", sha])
         files = [line.strip() for line in files_output.splitlines() if line.strip()]
+        diff_output = git_output(repo, ["show", "--pretty=format:", "--unified=0", "--no-color", sha])
         commits.append(
             {
                 "sha": sha,
@@ -398,6 +535,7 @@ def collect_repo_commits(repo, since, until, author_name, author_email, include_
                 "subject": sanitize_subject(subject),
                 "body": normalize_body(body),
                 "files": files,
+                "diff": diff_output,
             }
         )
     return commits
@@ -491,7 +629,7 @@ def summarize_commit_group(commits):
     phrases = []
     seen = set()
     for commit in commits:
-        phrase = humanize_summary_phrase(commit["subject"])
+        phrase = summarize_commit_phrase(commit)
         normalized = phrase.lower()
         if not phrase or normalized in seen:
             continue

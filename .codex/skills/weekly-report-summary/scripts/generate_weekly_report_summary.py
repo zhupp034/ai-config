@@ -166,6 +166,10 @@ def classify_subject(subject):
         return "refactor"
     if lowered.startswith("chore"):
         return "chore"
+    if lowered.startswith("docs"):
+        return "docs"
+    if lowered.startswith("test"):
+        return "test"
     if lowered.startswith("build:"):
         return "build"
     return "other"
@@ -230,6 +234,8 @@ def classify_phrase_bucket(phrase):
     lowered = phrase.lower()
     if is_low_value_phrase(phrase):
         return "skip"
+    if lowered.startswith("docs") or "文档" in phrase or "协作" in phrase or "审计" in phrase:
+        return "技术优化"
     if any(keyword in phrase for keyword in ["修复", "补强", "适配", "问题", "联测"]) or "fix" in lowered:
         return "问题修复"
     if any(keyword in phrase for keyword in ["发布", "优化", "调整", "迁移", "整理", "重构", "工具层", "日志输出", "bundle", "依赖"]) or "release" in lowered:
@@ -302,7 +308,7 @@ def render_repo_section(repo, glossary):
 
 
 def render_repo_summary(repo):
-    grouped = {"feat": [], "fix": [], "refactor": [], "chore": [], "other": [], "build": []}
+    grouped = {"feat": [], "fix": [], "refactor": [], "chore": [], "docs": [], "test": [], "other": [], "build": []}
     for commit in repo["commits"]:
         grouped[classify_subject(commit["subject"])].append(commit)
 
@@ -315,10 +321,18 @@ def render_repo_summary(repo):
         phrases = top_phrases(grouped["fix"], limit=2)
         if phrases:
             lines.append(f"- 同步处理了{join_phrases(phrases)}。")
-    if grouped["refactor"] or grouped["chore"]:
+    if grouped["refactor"] or grouped["chore"] or grouped["docs"] or grouped["test"]:
         phrases = top_phrases(grouped["refactor"] + grouped["chore"], limit=2)
         if phrases:
             lines.append(f"- 另外完成了{join_phrases(phrases)}。")
+    if grouped["docs"]:
+        phrases = top_phrases(grouped["docs"], limit=2)
+        if phrases:
+            lines.append(f"- 另外补充了{join_phrases(phrases)}等文档与协作基线。")
+    if grouped["test"]:
+        phrases = top_phrases(grouped["test"], limit=2)
+        if phrases:
+            lines.append(f"- 同步补充了{join_phrases(phrases)}相关测试覆盖。")
     if not lines:
         lines.append("- 本周以常规维护和结果同步为主。")
     return lines[:3]
@@ -465,6 +479,21 @@ def note_matches(note, keywords):
     return any(keyword in note for keyword in keywords)
 
 
+def classify_note_bucket(note):
+    lowered = note.lower()
+    if any(keyword in note for keyword in ["问题", "异常", "不对", "失败", "报错", "溢出", "排查", "修复"]):
+        return "问题修复"
+    if any(keyword in note for keyword in ["AI", "ai", "skill", "禅道", "调研", "优化", "文档", "规范", "流程"]):
+        return "技术优化"
+    if any(keyword in note for keyword in ["联测", "发版", "会议", "断线重连", "上线", "入口", "支持"]):
+        return "需求开发"
+    if "风险" in note or "关注" in note:
+        return "问题与风险"
+    if "问题" in lowered:
+        return "问题修复"
+    return "需求开发"
+
+
 def dedupe_phrases(items, limit=None):
     results = []
     seen = set()
@@ -489,7 +518,15 @@ def build_completed_sections(active_repos, extra_notes):
             phrase = humanize_subject(commit["subject"])
             if not phrase or is_low_value_phrase(phrase):
                 continue
-            bucket = classify_phrase_bucket(phrase)
+            commit_type = classify_subject(commit["subject"])
+            if commit_type in {"docs", "test", "refactor", "chore", "build"}:
+                bucket = "技术优化"
+            elif commit_type == "fix":
+                bucket = "问题修复"
+            elif commit_type == "feat":
+                bucket = "需求开发"
+            else:
+                bucket = classify_phrase_bucket(phrase)
             if bucket == "需求开发":
                 demand_items.append(phrase)
             elif bucket == "问题修复":
@@ -498,9 +535,12 @@ def build_completed_sections(active_repos, extra_notes):
                 optimization_items.append(phrase)
 
     for note in extra_notes:
-        if note_matches(note, ["AI", "ai", "skill", "禅道", "调研", "优化"]):
+        bucket = classify_note_bucket(note)
+        if bucket == "问题修复":
+            fix_items.append(note.rstrip("。"))
+        elif bucket == "技术优化":
             optimization_items.append(note.rstrip("。"))
-        elif note_matches(note, ["联测", "发版", "会议", "断线重连"]):
+        elif bucket == "需求开发":
             demand_items.append(note.rstrip("。"))
 
     return {
@@ -527,6 +567,9 @@ def build_risk_section(active_repos, extra_notes):
     for note in extra_notes:
         if "[zentao-warning]" in note:
             items.append(note.replace("[zentao-warning]", "禅道动态抓取提醒：").strip())
+            continue
+        if classify_note_bucket(note) == "问题修复":
+            items.append(f"业务问题仍需继续关注：{note.rstrip('。')}。")
     return dedupe_phrases(items, limit=3)
 
 
