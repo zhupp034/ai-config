@@ -6,13 +6,25 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 
+SCRIPT_PATH = Path(__file__).resolve()
+SKILL_ROOT = SCRIPT_PATH.parent.parent
+CODEX_HOME = SKILL_ROOT.parent.parent
+DESKTOP_ROOT = Path(os.environ.get("DESKTOP_ROOT", Path.home() / "Desktop")).resolve()
+WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", DESKTOP_ROOT / "workspace")).resolve()
 SKIP_DIRS = {".git", "node_modules", ".idea", ".vscode"}
-SHARED_GLOSSARY_PATH = Path("/Users/zpp/.codex/memories/term-glossary.json")
-LOCAL_GLOSSARY_PATH = Path(__file__).resolve().parent.parent / "term-glossary.json"
+SHARED_GLOSSARY_PATH = Path(
+    os.environ.get("CODEX_SHARED_GLOSSARY", CODEX_HOME / "memories" / "term-glossary.json")
+).resolve()
+LOCAL_GLOSSARY_PATH = (SKILL_ROOT / "term-glossary.json").resolve()
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+REPORT_TYPE = "git-weekly-summary"
+SCHEMA_VERSION = "1.0"
 GENERIC_SUBJECTS = {
     "update",
     "updates",
@@ -144,7 +156,13 @@ def parse_args():
     )
     parser.add_argument(
         "--report-dir",
-        help="Directory used for weekly summary markdown files. Defaults to /Users/zpp/Desktop/workspace/git-weekly-report.",
+        help="Directory used for weekly summary markdown files. Defaults to $WORKSPACE_ROOT/git-weekly-report.",
+    )
+    parser.add_argument(
+        "--analysis-mode",
+        choices=("rule", "ai"),
+        default=os.environ.get("GIT_WEEKLY_SUMMARY_ANALYSIS_MODE", "ai"),
+        help="How to analyze commit content. Defaults to ai.",
     )
     return parser.parse_args()
 
@@ -265,6 +283,17 @@ def resolve_author_filters(args):
     return author_name, author_email
 
 
+def load_ai_settings():
+    api_key = os.environ.get("GIT_WEEKLY_SUMMARY_OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    model = os.environ.get("GIT_WEEKLY_SUMMARY_OPENAI_MODEL") or os.environ.get("OPENAI_MODEL")
+    base_url = (os.environ.get("GIT_WEEKLY_SUMMARY_OPENAI_BASE_URL") or os.environ.get("OPENAI_BASE_URL") or DEFAULT_OPENAI_BASE_URL).rstrip("/")
+    if not api_key:
+        raise RuntimeError("missing OpenAI API key: set GIT_WEEKLY_SUMMARY_OPENAI_API_KEY or OPENAI_API_KEY")
+    if not model:
+        raise RuntimeError("missing OpenAI model: set GIT_WEEKLY_SUMMARY_OPENAI_MODEL or OPENAI_MODEL")
+    return {"api_key": api_key, "model": model, "base_url": base_url}
+
+
 def sanitize_subject(subject):
     return subject.replace("```", "").strip()
 
@@ -352,10 +381,9 @@ def is_generic_summary_phrase(phrase):
 
 def normalize_summary_subject(subject):
     cleaned = sanitize_subject(subject)
-    if ":" in cleaned:
-        prefix, rest = cleaned.split(":", 1)
-        if prefix.lower() in {"feat", "fix", "refactor", "chore", "build", "docs", "test", "perf"}:
-            cleaned = rest.strip()
+    match = re.match(r"^(feat|fix|refactor|chore|build|docs|test|perf)(\([^)]+\))?:\s*(.+)$", cleaned, re.IGNORECASE)
+    if match:
+        cleaned = match.group(3).strip()
     return cleaned.lstrip("- ").strip()
 
 
@@ -393,6 +421,47 @@ def extract_diff_hints(diff_text, limit=3):
     return ranked[:limit]
 
 
+def collect_changed_lines(diff_text):
+    removed = []
+    added = []
+    for raw_line in diff_text.splitlines():
+        line = raw_line.rstrip()
+        if not line or line.startswith(("+++", "---", "@@")):
+            continue
+        if line.startswith("-"):
+            removed.append(line[1:].strip())
+        elif line.startswith("+"):
+            added.append(line[1:].strip())
+    return removed, added
+
+
+def extract_assignment_changes(diff_text, limit=2):
+    removed_lines, added_lines = collect_changed_lines(diff_text)
+    removed_map = {}
+    assignment_pattern = re.compile(r"^(?:const|let|var)?\s*([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+?);?$")
+
+    for line in removed_lines:
+        match = assignment_pattern.match(line)
+        if not match:
+            continue
+        removed_map[match.group(1)] = match.group(2).strip()
+
+    phrases = []
+    for line in added_lines:
+        match = assignment_pattern.match(line)
+        if not match:
+            continue
+        target = match.group(1)
+        new_value = match.group(2).strip()
+        old_value = removed_map.get(target)
+        if not old_value or old_value == new_value:
+            continue
+        phrases.append(f"将 {target} 从 {old_value} 调整为 {new_value}")
+        if len(phrases) >= limit:
+            break
+    return phrases
+
+
 def extract_file_hints(files, limit=2):
     hints = []
     for path in files:
@@ -415,9 +484,12 @@ def extract_file_hints(files, limit=2):
 
 
 def summarize_commit_phrase(commit):
+    if commit.get("analysis", {}).get("summary"):
+        return commit["analysis"]["summary"]
     subject_phrase = humanize_summary_phrase(commit["subject"])
     file_hints = extract_file_hints(commit.get("files", []))
     diff_hints = extract_diff_hints(commit.get("diff", ""))
+    assignment_changes = extract_assignment_changes(commit.get("diff", ""))
     ordered_hints = []
     seen_hints = set()
     for hint in [*file_hints, *diff_hints]:
@@ -428,16 +500,323 @@ def summarize_commit_phrase(commit):
         ordered_hints.append(hint)
     category = classify_subject(commit["subject"])
 
+    if assignment_changes and (is_generic_summary_phrase(subject_phrase) or looks_mostly_ascii(subject_phrase)):
+        return assignment_changes[0]
+
     if ordered_hints and (is_generic_summary_phrase(subject_phrase) or looks_mostly_ascii(subject_phrase)):
         hint_text = "、".join(ordered_hints[:2])
         if category == "fix":
             return f"修复{hint_text}相关问题"
         if category == "feat":
             return f"新增或完善{hint_text}相关能力"
+        if category == "docs":
+            return f"补充{hint_text}相关文档与说明"
+        if category == "test":
+            return f"补充{hint_text}相关测试覆盖"
         if category in {"refactor", "chore", "build", "other"}:
             return f"调整{hint_text}相关实现"
 
     return subject_phrase
+
+
+def infer_commit_theme_tokens(commit):
+    tokens = []
+    subject_and_summary = " ".join(
+        [
+            commit.get("subject", ""),
+            commit.get("body", ""),
+            (commit.get("analysis") or {}).get("summary", ""),
+        ]
+    ).lower()
+    for path in commit.get("files", []):
+        lowered = path.lower()
+        if "websocket" in lowered or "reconnect" in lowered:
+            tokens.append("websocket")
+        if "rtc" in lowered:
+            tokens.append("rtc")
+        if lowered.endswith((".md", ".markdown")) or "/docs/" in lowered:
+            tokens.append("docs")
+        if "test" in lowered:
+            tokens.append("test")
+    if "websocket" in subject_and_summary or "reconnect" in subject_and_summary or "断线重连" in subject_and_summary:
+        tokens.append("websocket")
+    if "rtc" in subject_and_summary:
+        tokens.append("rtc")
+    if "docs" in subject_and_summary or "文档" in subject_and_summary:
+        tokens.append("docs")
+    if "test" in subject_and_summary or "测试" in subject_and_summary:
+        tokens.append("test")
+    if not tokens:
+        tokens.extend(token.lower() for token in extract_file_hints(commit.get("files", []), limit=2))
+    if not tokens:
+        tokens.extend(area.lower() for area in summarize_areas([commit])[:2])
+    deduped = []
+    seen = set()
+    for token in tokens:
+        if token in seen:
+            continue
+        seen.add(token)
+        deduped.append(token)
+    if any(token in {"websocket", "rtc"} for token in deduped):
+        deduped = [token for token in deduped if token not in {"docs", "test"}]
+    return deduped[:2]
+
+
+def classify_summary_bucket(summary, category):
+    lowered = summary.lower()
+    if category == "feat":
+        return "需求开发"
+    if category == "fix":
+        return "问题修复"
+    if category in {"refactor", "chore", "build", "docs", "test"}:
+        return "技术优化"
+    if any(keyword in summary for keyword in ["修复", "异常", "问题", "排查", "兼容", "适配"]):
+        return "问题修复"
+    if any(keyword in summary for keyword in ["测试", "优化", "整理", "构建", "文档", "工具", "链路"]) or any(
+        keyword in lowered for keyword in ["test", "docs", "build", "refactor"]
+    ):
+        return "技术优化"
+    return "需求开发"
+
+
+def build_theme_project_summary(repo_name, theme, grouped_items):
+    del repo_name, theme
+    return [item["summary"] for item in grouped_items if item["summary"]][:3]
+
+
+def build_theme_analysis(repo_name, theme, grouped_items):
+    completed_sections = {"需求开发": [], "问题修复": [], "技术优化": []}
+    risks = []
+
+    for item in grouped_items:
+        summary = item["summary"]
+        if summary:
+            bucket = classify_summary_bucket(summary, item["category"])
+            completed_sections[bucket].append(summary)
+        for risk in item["risks"]:
+            if risk not in risks:
+                risks.append(risk)
+
+    project_summary = build_theme_project_summary(repo_name, theme, grouped_items)
+    reflections = []
+    next_steps = []
+
+    return {
+        "completed_sections": {
+            section: items for section, items in completed_sections.items() if items
+        },
+        "project_summary": project_summary,
+        "risks": risks,
+        "reflections": reflections[:2],
+        "next_steps": next_steps[:2],
+    }
+
+
+def build_repo_themes(repo):
+    groups = {}
+    order = []
+    for commit in repo.get("commits", []):
+        category = classify_subject(commit["subject"])
+        tokens = infer_commit_theme_tokens(commit)
+        key = tuple(tokens) or (category,)
+        if key not in groups:
+            title_parts = [token for token in tokens if token]
+            title = " / ".join(title_parts) if title_parts else category
+            groups[key] = {
+                "title": title,
+                "categories": [],
+                "commit_count": 0,
+                "commit_shas": [],
+                "key_files": [],
+                "summaries": [],
+                "analysis": {},
+            }
+            order.append(key)
+        group = groups[key]
+        if category not in group["categories"]:
+            group["categories"].append(category)
+        group["commit_count"] += 1
+        group["commit_shas"].append(commit["short_sha"])
+        for path in commit.get("files", []):
+            if path not in group["key_files"]:
+                group["key_files"].append(path)
+        summary = commit.get("analysis", {}).get("summary") or summarize_commit_phrase(commit)
+        if summary not in group["summaries"]:
+            group["summaries"].append(summary)
+        grouped_items = group.setdefault("_grouped_items", [])
+        grouped_items.append(
+            {
+                "category": category,
+                "summary": summary,
+                "files": (commit.get("analysis") or {}).get("files", []),
+                "risks": (commit.get("analysis") or {}).get("risks", []),
+            }
+        )
+
+    themes = []
+    for key in order:
+        group = groups[key]
+        grouped_items = group.pop("_grouped_items", [])
+        group["analysis"] = build_theme_analysis(repo["name"], group, grouped_items)
+        themes.append(group)
+    return themes
+
+
+def split_diff_by_file(diff_text):
+    file_diffs = []
+    current = None
+    for raw_line in diff_text.splitlines():
+        if raw_line.startswith("diff --git "):
+            if current:
+                file_diffs.append(current)
+            parts = raw_line.split()
+            path = parts[3][2:] if len(parts) >= 4 and parts[3].startswith("b/") else raw_line
+            current = {"path": path, "patch_lines": [raw_line]}
+            continue
+        if current is not None:
+            current["patch_lines"].append(raw_line)
+    if current:
+        file_diffs.append(current)
+    return file_diffs
+
+
+def truncate_text(text, limit):
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"\n... [truncated {len(text) - limit} chars]"
+
+
+def build_commit_analysis_input(repo_name, commit):
+    per_file_sections = []
+    for file_diff in split_diff_by_file(commit.get("diff", "")):
+        patch = "\n".join(file_diff["patch_lines"])
+        per_file_sections.append(
+            f"文件: {file_diff['path']}\n补丁:\n{truncate_text(patch, 6000)}"
+        )
+    files_text = "\n\n".join(per_file_sections) if per_file_sections else "\n".join(commit.get("files", []))
+    return (
+        f"仓库: {repo_name}\n"
+        f"提交: {commit['short_sha']} {commit['subject']}\n"
+        f"日期: {commit['date']}\n"
+        f"文件列表: {', '.join(commit.get('files', []))}\n\n"
+        f"请基于下面的文件实际改动内容进行分析，不要只复述 commit message。\n\n"
+        f"{truncate_text(files_text, 40000)}"
+    )
+
+
+def analysis_json_schema():
+    return {
+        "name": "git_commit_analysis",
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "summary": {"type": "string"},
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "path": {"type": "string"},
+                            "summary": {"type": "string"},
+                            "changes": {"type": "array", "items": {"type": "string"}},
+                            "impact": {"type": "string"},
+                        },
+                        "required": ["path", "summary", "changes", "impact"],
+                    },
+                },
+                "risks": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["summary", "files", "risks"],
+        },
+        "strict": True,
+    }
+
+
+def extract_response_text(payload):
+    output = payload.get("output", [])
+    for item in output:
+        for content in item.get("content", []):
+            text = content.get("text")
+            if text:
+                return text
+    if payload.get("output_text"):
+        return payload["output_text"]
+    raise RuntimeError("OpenAI response did not contain text output")
+
+
+def call_openai_responses_api(prompt, settings):
+    request_body = {
+        "model": settings["model"],
+        "input": [
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": (
+                            "你是资深前端代码审查助手。请按文件实际改动内容做详细分析，"
+                            "不要复述 commit message，不要压缩成泛化短句。"
+                        ),
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": (
+                            "请输出 JSON。\n"
+                            "要求：\n"
+                            "1. summary 用 1-2 句话概括这次提交的核心内容。\n"
+                            "2. files 必须覆盖关键文件，逐个说明具体改了什么。\n"
+                            "3. changes 尽量详细，描述实际代码/配置/文案变化。\n"
+                            "4. 如果能从补丁看出前后变化，要明确写出来。\n"
+                            "5. risks 可以为空数组。\n\n"
+                            f"{prompt}"
+                        ),
+                    }
+                ],
+            },
+        ],
+        "text": {"format": {"type": "json_schema", "name": "git_commit_analysis", "schema": analysis_json_schema()["schema"], "strict": True}},
+    }
+    data = json.dumps(request_body).encode("utf-8")
+    request = urllib.request.Request(
+        f"{settings['base_url']}/responses",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {settings['api_key']}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"OpenAI API error {error.code}: {body}") from error
+    except urllib.error.URLError as error:
+        raise RuntimeError(f"OpenAI API request failed: {error}") from error
+    return json.loads(extract_response_text(payload))
+
+
+def analyze_commit_with_ai(repo_name, commit, settings, client=None):
+    analyzer = client or call_openai_responses_api
+    prompt = build_commit_analysis_input(repo_name, commit)
+    return analyzer(prompt, settings)
+
+
+def analyze_report_with_ai(report, settings, client=None):
+    for repo in report["repositories"]:
+        for commit in repo["commits"]:
+            commit["analysis"] = analyze_commit_with_ai(repo["name"], commit, settings, client=client)
+        repo["themes"] = build_repo_themes(repo)
+    report["analysis_mode"] = "ai"
+    return report
 
 
 def is_noise_commit(subject):
@@ -543,12 +922,15 @@ def collect_repo_commits(repo, since, until, author_name, author_email, include_
 
 def build_report(roots, repos, since, until, author_name, author_email, include_merges, current_branch_only):
     report = {
+        "report_type": REPORT_TYPE,
+        "schema_version": SCHEMA_VERSION,
         "root": str(roots[0]),
         "roots": [str(root) for root in roots],
         "since": since,
         "until": until,
         "author": author_name,
         "author_email": author_email,
+        "analysis_mode": "rule",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "repositories": [],
     }
@@ -573,8 +955,10 @@ def build_report(roots, repos, since, until, author_name, author_email, include_
                 "authors": authors,
                 "touched_files_count": len(touched_files),
                 "commits": commits,
+                "themes": [],
             }
         )
+        report["repositories"][-1]["themes"] = build_repo_themes(report["repositories"][-1])
     return report
 
 
@@ -582,6 +966,10 @@ def classify_subject(subject):
     lowered = subject.lower()
     if lowered.startswith("build:"):
         return "build"
+    if lowered.startswith("docs"):
+        return "docs"
+    if lowered.startswith("test"):
+        return "test"
     if lowered.startswith("fix"):
         return "fix"
     if lowered.startswith("feat"):
@@ -661,6 +1049,28 @@ def format_summary_details(phrases, fallback_count, areas):
 
 
 def summarize_repo(repo):
+    if any(commit.get("analysis") for commit in repo["commits"]):
+        bullet_lines = []
+        all_areas = summarize_areas(repo["commits"])
+        if all_areas:
+            bullet_lines.append(
+                f"- 变更范围覆盖 {repo['touched_files_count']} 个文件，重点集中在 {', '.join(all_areas)}。"
+            )
+        for commit in repo["commits"]:
+            analysis = commit.get("analysis") or {}
+            summary = analysis.get("summary") or summarize_commit_phrase(commit)
+            bullet_lines.append(f"- 提交 {commit['short_sha']}：{summary}")
+            for file_item in analysis.get("files", []):
+                bullet_lines.append(f"  - 文件 {file_item['path']}：{file_item['summary']}")
+                for change in file_item.get("changes", []):
+                    bullet_lines.append(f"    - {change}")
+                impact = file_item.get("impact")
+                if impact:
+                    bullet_lines.append(f"    - 影响：{impact}")
+            for risk in analysis.get("risks", []):
+                bullet_lines.append(f"  - 风险：{risk}")
+        return bullet_lines
+
     category_commits = defaultdict(list)
 
     for commit in repo["commits"]:
@@ -751,7 +1161,7 @@ def render_summary(report):
 def resolve_report_dir(root, report_dir):
     if report_dir:
         return Path(report_dir).resolve()
-    return Path("/Users/zpp/Desktop/workspace/git-weekly-report")
+    return (WORKSPACE_ROOT / "git-weekly-report").resolve()
 
 
 def write_weekly_report(report_text, report, root, report_dir):
@@ -899,6 +1309,8 @@ def main():
         args.include_merges,
         args.current_branch_only,
     )
+    if args.analysis_mode == "ai":
+        report = analyze_report_with_ai(report, load_ai_settings())
 
     if args.format == "json":
         output = json.dumps(report, ensure_ascii=False, indent=2)

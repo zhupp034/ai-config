@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -9,18 +10,43 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-GITLAB_ROOT = Path("/Users/zpp/Desktop/gitlab")
-GIT_WEEKLY_REPORT_DIR = Path("/Users/zpp/Desktop/workspace/git-weekly-report")
-WEEKLY_REPORT_OUTPUT_DIR = Path("/Users/zpp/Desktop/workspace/weekly-report")
-WEEKLY_REPORT_NOTES_DIR = Path("/Users/zpp/Desktop/workspace/weekly-report-notes")
+SCRIPT_PATH = Path(__file__).resolve()
+SKILL_ROOT = SCRIPT_PATH.parent.parent
+CODEX_HOME = SKILL_ROOT.parent.parent
+DESKTOP_ROOT = Path(os.environ.get("DESKTOP_ROOT", Path.home() / "Desktop")).resolve()
+WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", DESKTOP_ROOT / "workspace")).resolve()
+GITLAB_ROOT = Path(os.environ.get("GITLAB_ROOT", DESKTOP_ROOT / "gitlab")).resolve()
+GIT_WEEKLY_REPORT_DIR = Path(
+    os.environ.get("GIT_WEEKLY_REPORT_DIR", WORKSPACE_ROOT / "git-weekly-report")
+).resolve()
+WEEKLY_REPORT_OUTPUT_DIR = Path(
+    os.environ.get("WEEKLY_REPORT_OUTPUT_DIR", WORKSPACE_ROOT / "weekly-report")
+).resolve()
+WEEKLY_REPORT_NOTES_DIR = Path(
+    os.environ.get("WEEKLY_REPORT_NOTES_DIR", WORKSPACE_ROOT / "weekly-report-notes")
+).resolve()
 GIT_WEEKLY_SUMMARY_SCRIPT = Path(
-    "/Users/zpp/.codex/skills/git-weekly-summary/scripts/collect_weekly_commits.py"
-)
+    os.environ.get(
+        "GIT_WEEKLY_SUMMARY_SCRIPT",
+        CODEX_HOME / "skills" / "git-weekly-summary" / "scripts" / "collect_weekly_commits.py",
+    )
+).resolve()
 ZENTAO_WEEKLY_SCRIPT = Path(
-    "/Users/zpp/.codex/skills/zentao-weekly-summary/scripts/fetch_zentao_weekly.py"
-)
-SHARED_GLOSSARY_PATH = Path("/Users/zpp/.codex/memories/term-glossary.json")
-LOCAL_GLOSSARY_PATH = Path("/Users/zpp/.codex/skills/git-weekly-summary/term-glossary.json")
+    os.environ.get(
+        "ZENTAO_WEEKLY_SCRIPT",
+        CODEX_HOME / "skills" / "zentao-weekly-summary" / "scripts" / "fetch_zentao_weekly.py",
+    )
+).resolve()
+SHARED_GLOSSARY_PATH = Path(
+    os.environ.get("CODEX_SHARED_GLOSSARY", CODEX_HOME / "memories" / "term-glossary.json")
+).resolve()
+LOCAL_GLOSSARY_PATH = Path(
+    os.environ.get(
+        "GIT_WEEKLY_SUMMARY_LOCAL_GLOSSARY",
+        CODEX_HOME / "skills" / "git-weekly-summary" / "term-glossary.json",
+    )
+).resolve()
+_GIT_WEEKLY_SUMMARY_MODULE = None
 
 
 def parse_args():
@@ -31,6 +57,11 @@ def parse_args():
     parser.add_argument("--report-dir", default=str(GIT_WEEKLY_REPORT_DIR))
     parser.add_argument("--output-dir", default=str(WEEKLY_REPORT_OUTPUT_DIR))
     parser.add_argument("--notes-dir", default=str(WEEKLY_REPORT_NOTES_DIR))
+    parser.add_argument(
+        "--analysis-mode",
+        choices=("rule", "ai"),
+        default=os.environ.get("GIT_WEEKLY_SUMMARY_ANALYSIS_MODE", "rule"),
+    )
     parser.add_argument("--write-output", action="store_true")
     parser.add_argument("--skip-zentao-refresh", action="store_true")
     parser.add_argument("--zentao-base-url", default=os.environ.get("ZENTAO_BASE_URL", "http://192.168.20.9/pro/"))
@@ -60,13 +91,38 @@ def load_term_glossary():
     return glossary
 
 
-def refresh_weekly_reports(root, report_dir):
+def load_git_weekly_summary_module():
+    global _GIT_WEEKLY_SUMMARY_MODULE
+    if _GIT_WEEKLY_SUMMARY_MODULE is not None:
+        return _GIT_WEEKLY_SUMMARY_MODULE
+
+    spec = importlib.util.spec_from_file_location("git_weekly_summary", GIT_WEEKLY_SUMMARY_SCRIPT)
+    if spec is None or spec.loader is None:
+        _GIT_WEEKLY_SUMMARY_MODULE = None
+        return None
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    _GIT_WEEKLY_SUMMARY_MODULE = module
+    return module
+
+
+def summarize_commit_phrase(commit):
+    summary_module = load_git_weekly_summary_module()
+    if summary_module is not None:
+        return summary_module.summarize_commit_phrase(commit)
+    return humanize_subject(commit["subject"])
+
+
+def refresh_weekly_reports(root, report_dir, analysis_mode):
     command = [
         "python3",
         str(GIT_WEEKLY_SUMMARY_SCRIPT),
         "--root",
         str(root),
         "--mine",
+        "--analysis-mode",
+        analysis_mode,
         "--write-report",
         "--write-json-report",
         "--report-dir",
@@ -177,10 +233,9 @@ def classify_subject(subject):
 
 def humanize_subject(subject):
     cleaned = subject.strip()
-    if ":" in cleaned:
-        prefix, rest = cleaned.split(":", 1)
-        if prefix.lower() in {"feat", "fix", "refactor", "chore", "build", "docs", "test"}:
-            cleaned = rest.strip()
+    match = re.match(r"^(feat|fix|refactor|chore|build|docs|test)(\([^)]+\))?:\s*(.+)$", cleaned, re.IGNORECASE)
+    if match:
+        cleaned = match.group(3).strip()
     return cleaned
 
 
@@ -208,7 +263,7 @@ def top_phrases(commits, limit=3):
     phrases = []
     seen = set()
     for commit in commits:
-        phrase = humanize_subject(commit["subject"])
+        phrase = summarize_commit_phrase(commit)
         if not phrase or phrase in seen:
             continue
         seen.add(phrase)
@@ -508,14 +563,92 @@ def dedupe_phrases(items, limit=None):
     return results
 
 
+def repo_theme_items(repo):
+    return repo.get("themes") or []
+
+
+def theme_analysis(theme):
+    return theme.get("analysis") or {}
+
+
+def theme_analysis_section_items(theme, section_name):
+    completed_sections = theme_analysis(theme).get("completed_sections") or {}
+    return completed_sections.get(section_name) or []
+
+
+def theme_analysis_list(theme, field_name):
+    value = theme_analysis(theme).get(field_name) or []
+    return value if isinstance(value, list) else []
+
+
+def has_theme_analysis_items(active_repos, field_name):
+    for repo in active_repos:
+        for theme in repo_theme_items(repo):
+            if theme_analysis_list(theme, field_name):
+                return True
+    return False
+
+
+def render_repo_themes(repo):
+    lines = []
+    for theme in repo_theme_items(repo):
+        project_summary = theme_analysis_list(theme, "project_summary")
+        if project_summary:
+            for item in project_summary[:3]:
+                lines.append(f"- {item}")
+            continue
+        summaries = theme.get("summaries", [])
+        if summaries:
+            lines.append(f"- 本周围绕 {theme['title']} 重点推进了{join_phrases(summaries[:2])}。")
+        if theme.get("key_files"):
+            visible_files = "、".join(theme["key_files"][:3])
+            lines.append(f"- 关键文件主要包括 {visible_files}。")
+    return lines[:4]
+
+
 def build_completed_sections(active_repos, extra_notes):
     demand_items = []
     fix_items = []
     optimization_items = []
 
     for repo in active_repos:
+        theme_items = repo_theme_items(repo)
+        if theme_items:
+            for theme in theme_items:
+                analysis_completed = False
+                for item in theme_analysis_section_items(theme, "需求开发"):
+                    demand_items.append(item)
+                    analysis_completed = True
+                for item in theme_analysis_section_items(theme, "问题修复"):
+                    fix_items.append(item)
+                    analysis_completed = True
+                for item in theme_analysis_section_items(theme, "技术优化"):
+                    optimization_items.append(item)
+                    analysis_completed = True
+                if analysis_completed:
+                    continue
+                for summary in theme.get("summaries", []):
+                    if not summary or is_low_value_phrase(summary):
+                        continue
+                    categories = set(theme.get("categories", []))
+                    if len(categories) > 1 or not categories:
+                        bucket = classify_phrase_bucket(summary)
+                    elif "fix" in categories:
+                        bucket = "问题修复"
+                    elif "feat" in categories:
+                        bucket = "需求开发"
+                    else:
+                        bucket = "技术优化"
+
+                    if bucket == "问题修复":
+                        fix_items.append(summary)
+                    elif bucket == "需求开发":
+                        demand_items.append(summary)
+                    else:
+                        optimization_items.append(summary)
+            continue
         for commit in repo["commits"]:
-            phrase = humanize_subject(commit["subject"])
+            phrase = summarize_commit_phrase(commit)
             if not phrase or is_low_value_phrase(phrase):
                 continue
             commit_type = classify_subject(commit["subject"])
@@ -554,27 +687,35 @@ def build_project_sections(active_repos, glossary):
     sections = []
     ordered_repos = sorted(active_repos, key=lambda repo: (-repo["commit_count"], repo["name"]))
     for repo in ordered_repos:
-        sections.append((format_term(repo["name"], glossary), render_repo_summary(repo)))
+        repo_lines = render_repo_themes(repo) if repo_theme_items(repo) else render_repo_summary(repo)
+        sections.append((format_term(repo["name"], glossary), repo_lines))
     return sections
 
 
 def build_risk_section(active_repos, extra_notes):
     items = []
-    if any("断线重连" in humanize_subject(commit["subject"]) for repo in active_repos for commit in repo["commits"]):
+    has_analysis_risks = has_theme_analysis_items(active_repos, "risks")
+    for repo in active_repos:
+        for theme in repo_theme_items(repo):
+            items.extend(theme_analysis_list(theme, "risks"))
+    if not has_analysis_risks and any("断线重连" in humanize_subject(commit["subject"]) for repo in active_repos for commit in repo["commits"]):
         items.append("会议系统与课堂侧的断线重连相关改动仍需继续关注联测稳定性和线上表现。")
-    if any(note_matches(note, ["联测", "会议"]) for note in extra_notes):
+    if not has_analysis_risks and any(note_matches(note, ["联测", "会议"]) for note in extra_notes):
         items.append("跨项目联测事项较多，需要继续协调测试节奏和版本节奏。")
     for note in extra_notes:
         if "[zentao-warning]" in note:
             items.append(note.replace("[zentao-warning]", "禅道动态抓取提醒：").strip())
             continue
-        if classify_note_bucket(note) == "问题修复":
+        if not has_analysis_risks and classify_note_bucket(note) == "问题修复":
             items.append(f"业务问题仍需继续关注：{note.rstrip('。')}。")
     return dedupe_phrases(items, limit=3)
 
 
-def build_reflection_section(extra_notes):
+def build_reflection_section_from_repos(active_repos, extra_notes):
     items = []
+    for repo in active_repos:
+        for theme in repo_theme_items(repo):
+            items.extend(theme_analysis_list(theme, "reflections"))
     if any(note_matches(note, ["AI", "ai", "skill", "禅道", "飞书云文档", "腾讯云文档"]) for note in extra_notes):
         items.append("本周继续沉淀 AI 工具和工作 skill 的配合方式，重复性整理工作进一步减少。")
     if any(note_matches(note, ["面试"]) for note in extra_notes):
@@ -584,11 +725,15 @@ def build_reflection_section(extra_notes):
 
 def build_next_plan_section(active_repos, extra_notes):
     items = []
-    if any("断线重连" in humanize_subject(commit["subject"]) for repo in active_repos for commit in repo["commits"]):
+    has_analysis_next_steps = has_theme_analysis_items(active_repos, "next_steps")
+    for repo in active_repos:
+        for theme in repo_theme_items(repo):
+            items.extend(theme_analysis_list(theme, "next_steps"))
+    if not has_analysis_next_steps and any("断线重连" in humanize_subject(commit["subject"]) for repo in active_repos for commit in repo["commits"]):
         items.append("继续跟进会议系统和课堂侧断线重连相关优化，补充联测和稳定性验证。")
-    if any(repo["name"] == "cnstrong-WebRTC" for repo in active_repos):
+    if not has_analysis_next_steps and any(repo["name"] == "cnstrong-WebRTC" for repo in active_repos):
         items.append("继续推进音视频播放器和 webrtc 组件库的稳定性优化与版本迭代。")
-    if any(note_matches(note, ["AI", "ai", "禅道", "飞书云文档", "腾讯云文档"]) for note in extra_notes):
+    if not has_analysis_next_steps and any(note_matches(note, ["AI", "ai", "禅道", "飞书云文档", "腾讯云文档"]) for note in extra_notes):
         items.append("继续推进 AI 接入禅道和文档平台的调研与落地，完善日常工作流。")
     return dedupe_phrases(items, limit=4)
 
@@ -600,7 +745,7 @@ def build_summary(report, since, until, extra_notes):
     completed_sections = build_completed_sections(active_repos, merged_notes)
     project_sections = build_project_sections(active_repos, glossary)
     risk_items = build_risk_section(active_repos, merged_notes)
-    reflection_items = build_reflection_section(merged_notes)
+    reflection_items = build_reflection_section_from_repos(active_repos, merged_notes)
     next_plan_items = build_next_plan_section(active_repos, merged_notes)
     lines = [
         "# 本周周报",
@@ -680,7 +825,7 @@ def main():
         password=args.zentao_password,
         skip_refresh=args.skip_zentao_refresh,
     )
-    _, json_path = refresh_weekly_reports(root, report_dir)
+    _, json_path = refresh_weekly_reports(root, report_dir, args.analysis_mode)
     report = load_structured_report(json_path)
     extra_notes = load_weekly_notes(notes_dir, since)
     summary = build_summary(report, since, now, extra_notes)
