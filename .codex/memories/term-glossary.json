@@ -11,6 +11,7 @@
   "app.tsx": "应用入口",
   "index.html": "页面入口",
   "package.json": "依赖配置",
+  "repository": "资源库web端",
   "document.ejs": "页面模板",
   "browser": "浏览器适配层",
   "cnstrong-WebRTC": "音视频播放器，webrtc组件库",
