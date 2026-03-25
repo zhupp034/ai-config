@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monthly Performance from Git"
+  short_description: "Create or update a monthly git performance page in Notion"
+  default_prompt: "Use $monthly-performance-from-git to generate this month's git-based performance draft and write it to the Notion parent page I provide."

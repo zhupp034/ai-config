@@ -36,5 +36,8 @@ enabled = true
 [mcp_servers.apifox_user_api.env]
 APIFOX_ACCESS_TOKEN = "afxp_8dc548PQmlpruCsbLKacOfccXIwXdQQqvViD"
 
+[mcp_servers.notion]
+url = "https://mcp.notion.com/mcp"
+
 [features]
 multi_agent = true
