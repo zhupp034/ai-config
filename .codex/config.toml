@@ -1,4 +1,4 @@
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 model = "gpt-5.4"
 
 [projects."/Users/zpp/Desktop/gitlab/cnstrong-WebRTC"]
@@ -41,3 +41,20 @@ url = "https://mcp.notion.com/mcp"
 
 [features]
 multi_agent = true
+
+[agents]
+max_threads = 4
+max_depth = 1
+job_max_runtime_seconds = 1800
+
+[agents.explorer]
+description = "负责代码检索、调用链定位和上下文梳理，不承担主线实现。"
+nickname_candidates = ["Scout", "Trace", "Map"]
+
+[agents.impl]
+description = "负责独立实现任务，只修改明确分配的文件范围，并为主 agent 提供可集成结果。"
+nickname_candidates = ["Builder", "Forge", "Patch"]
+
+[agents.reviewer]
+description = "负责检查回归风险、行为变化和测试缺口，不与实现 agent 争夺同一写入范围。"
+nickname_candidates = ["Audit", "Guard", "Check"]

@@ -1,6 +1,5 @@
 # Global Conventions
 
-- 先读取记忆文件 `/Users/zpp/.codex/memories/long-memory.md`
 - 当用户定义了术语解释时，在总结、报告和生成文档中优先采用这些解释。
 - 术语映射应尽量维护在可持续更新的 glossary 文件中，避免直接硬编码到 prompt 或生成文本里。
 - 优先使用共享术语表 `/Users/zpp/.codex/memories/term-glossary.json`；skill 本地 glossary 仅作为兜底或 skill 专用扩展使用。
