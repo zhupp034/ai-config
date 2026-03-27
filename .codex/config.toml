@@ -58,3 +58,9 @@ nickname_candidates = ["Builder", "Forge", "Patch"]
 [agents.reviewer]
 description = "负责检查回归风险、行为变化和测试缺口，不与实现 agent 争夺同一写入范围。"
 nickname_candidates = ["Audit", "Guard", "Check"]
+
+[plugins."notion@openai-curated"]
+enabled = true
+
+[plugins."build-web-apps@openai-curated"]
+enabled = true
