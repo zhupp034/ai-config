@@ -12,6 +12,7 @@ Use this skill for one repository at a time.
 - The repository is missing baseline collaboration docs and needs a lightweight bootstrap.
 - The goal is to add missing files only, not to rewrite an already-initialized repository.
 - The repository may use any stack. Detect real signals first instead of assuming frontend, Node.js, or a specific business domain.
+- For monorepos, initialize one target at a time. Default to the repository root, and use `--scope <path>` when only one app or package needs its own baseline.
 
 If the repository already has the documents but their quality is weak, hand off to `$project-ai-audit` instead of forcing another initialization pass.
 
@@ -23,14 +24,18 @@ If the repository already has the documents but their quality is weak, hand off 
 
 2. Run the baseline check.
 - Execute `scripts/check_ai_init.sh <repo-root>`.
+- In monorepos, prefer `scripts/check_ai_init.sh <repo-root> --scope <app-or-package-path>` when only one target needs initialization.
 - Treat the script output as the source of truth for which artifacts are missing or still incomplete.
+- If the check reports `recommended_follow_up: project-ai-audit`, treat the target as structurally mature enough for audit review. Do not force another full initialization pass unless the user explicitly wants to backfill the remaining docs immediately.
 
 3. Preview before writing.
 - Execute `scripts/auto_init_docs.sh <repo-root> dry-run`.
+- In monorepos, use `scripts/auto_init_docs.sh <repo-root> dry-run --scope <app-or-package-path>` so the preview stays inside the selected target.
 - Review the proposed files and README navigation change.
 
 4. Create only missing docs.
 - Execute `scripts/auto_init_docs.sh <repo-root> apply`.
+- In monorepos, use `scripts/auto_init_docs.sh <repo-root> apply --scope <app-or-package-path>` to create files inside the selected target instead of the repository root.
 - Never overwrite existing docs by default.
 
 5. Refine generated placeholders.
@@ -77,6 +82,8 @@ Legacy compatibility accepted during checks:
 - Generated commit guidance must follow the active repository rules. If no project rule exists, still prefer Chinese-first summary/body even for English-first repositories, while keeping the Conventional Commits `type(scope)` prefix in English. The generated guidance should require a body after the summary and explain change object, intent, impact, risks, and validation.
 - Generated testing guidance must use discovered commands when available and clearly mark placeholders when not.
 - Generated workflow docs must keep the Markdown sync rule: key file changes require Markdown updates, and missing docs should be created before commit.
+- Treat `docs/INTEGRATION_DEPENDENCIES.md` as a strong-signal artifact. Generic HTTP usage such as `fetch()` or `axios.create()` alone is not enough; prefer explicit SDK, OpenAPI, gRPC, protobuf, or dedicated integration directory signals.
+- Respect the maturity hint from `check_ai_init.sh`: core docs complete + quality signals complete + high recommended coverage means the repository should usually move to `$project-ai-audit`, even if a few conditional docs are still missing.
 
 ## Resources
 

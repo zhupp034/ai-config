@@ -21,6 +21,7 @@ Use this checklist when reviewing a repository for AI collaboration governance.
 
 ## Review output
 - State overall status: ready, partial, or not ready.
+- Surface the baseline hint from `project-ai-init` first: `baseline_state`, `baseline_maturity_profile`, and `baseline_recommended_follow_up`.
 - List findings in severity order.
 - Separate initialization gaps from quality gaps.
 - Recommend whether to use `$project-ai-init`, manual refinement, or `$gitlab-project-triage` next.

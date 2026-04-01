@@ -1,8 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${1:-.}"
-ROOT="$(cd "$ROOT" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=project_ai_init_common.sh
+source "$SCRIPT_DIR/project_ai_init_common.sh"
+
+ROOT="."
+SCOPE="."
+
+while (($# > 0)); do
+  case "$1" in
+    --scope)
+      SCOPE="${2:?missing value for --scope}"
+      shift 2
+      ;;
+    --help|-h)
+      printf 'usage: %s [repo-root] [--scope <path>]\n' "$(basename "$0")"
+      exit 0
+      ;;
+    *)
+      ROOT="$1"
+      shift
+      ;;
+  esac
+done
+
+project_ai_init_resolve_scope "$ROOT" "$SCOPE"
 
 core_files=(
   "AGENTS.md"
@@ -28,59 +51,7 @@ missing_recommended=()
 missing_conditional=()
 
 exists_file() {
-  [[ -f "$ROOT/$1" ]]
-}
-
-matches_product_code() {
-  local pattern="$1"
-  rg -n \
-    --glob 'src/**' \
-    --glob 'app/**' \
-    --glob 'apps/**' \
-    --glob 'packages/**' \
-    --glob 'services/**' \
-    --glob 'server/**' \
-    --glob 'client/**' \
-    --glob 'clients/**' \
-    --glob 'api/**' \
-    --glob 'cmd/**' \
-    --glob 'pkg/**' \
-    --glob 'internal/**' \
-    --glob 'lib/**' \
-    --glob 'config/**' \
-    --glob '*.go' \
-    --glob '*.py' \
-    --glob '*.rb' \
-    --glob '*.php' \
-    --glob '*.js' \
-    --glob '*.jsx' \
-    --glob '*.ts' \
-    --glob '*.tsx' \
-    --glob '*.mjs' \
-    --glob '*.cjs' \
-    --glob '*.java' \
-    --glob '*.kt' \
-    --glob '*.rs' \
-    --glob '*.json' \
-    --glob '*.toml' \
-    --glob '*.yml' \
-    --glob '*.yaml' \
-    --glob '!node_modules/**' \
-    --glob '!.git/**' \
-    --glob '!dist/**' \
-    --glob '!build/**' \
-    --glob '!coverage/**' \
-    --glob '!docs/**' \
-    --glob '!skills/**' \
-    --glob '!scripts/**' \
-    --glob '!test/**' \
-    --glob '!tests/**' \
-    --glob '!**/*.md' \
-    "$pattern" "$ROOT" >/dev/null 2>&1
-}
-
-matches_product_path() {
-  rg --files "$ROOT" | rg -v '/(docs|skills|scripts|test|tests)/' | rg -n "$1" >/dev/null 2>&1
+  project_ai_init_target_file_exists "$1"
 }
 
 has_routes="no"
@@ -88,22 +59,19 @@ has_events="no"
 has_integrations="no"
 has_domain_context="no"
 
-if matches_product_code 'react-router|vue-router|next/navigation|next/router|Route::|gin\.|mux\.|chi\.' || matches_product_path '(^|/)(routes?|router)\.(ts|js|tsx|jsx|mjs|cjs|py|go|rb|php)$|(^|/)urls\.py$'; then
+if project_ai_init_matches_product_code 'react-router|vue-router|next/navigation|next/router|Route::|gin\.|mux\.|chi\.' || project_ai_init_matches_product_path '(^|/)(routes?|router)\.(ts|js|tsx|jsx|mjs|cjs|py|go|rb|php)$|(^|/)urls\.py$'; then
   has_routes="yes"
   conditional_labels+=("routes")
   conditional_targets+=("docs/ROUTES_AND_ACCESS.md")
 fi
 
-if matches_product_code 'websocket|socket\.io|WebSocket|event bus|eventbus|pubsub|pub/sub|message queue|kafka|rabbitmq|nats|consumer|producer|stream handler'; then
+if project_ai_init_matches_product_code 'websocket|socket\.io|WebSocket|event bus|eventbus|pubsub|pub/sub|message queue|kafka|rabbitmq|nats|consumer|producer|stream handler'; then
   has_events="yes"
   conditional_labels+=("events")
   conditional_targets+=("docs/EVENT_AND_MESSAGE_FLOW.md")
 fi
 
-if [[ -d "$ROOT/sdk" || -d "$ROOT/integrations" || -d "$ROOT/clients" || -d "$ROOT/third_party" ]]; then
-  has_integrations="yes"
-fi
-if [[ "$has_integrations" == "no" ]] && matches_product_code 'openapi|swagger|grpc|protobuf|sdk|client[[:space:]_-]wrapper|third[- ]party|external api|axios\.create|fetch\('; then
+if project_ai_init_detect_integrations; then
   has_integrations="yes"
 fi
 if [[ "$has_integrations" == "yes" ]]; then
@@ -111,7 +79,7 @@ if [[ "$has_integrations" == "yes" ]]; then
   conditional_targets+=("docs/INTEGRATION_DEPENDENCIES.md")
 fi
 
-if matches_product_code 'workflow|state machine|approval|审批|permission|权限|tenant|租户|role|状态流转|domain model|聚合|订单|支付|库存|subscription'; then
+if project_ai_init_matches_product_code 'workflow|state machine|approval|审批|permission|权限|tenant|租户|role|状态流转|domain model|聚合|订单|支付|库存|subscription'; then
   has_domain_context="yes"
   conditional_labels+=("domain")
   conditional_targets+=("docs/DOMAIN_CONTEXT.md")
@@ -170,28 +138,51 @@ agents_has_md_sync_rule="no"
 workflow_has_md_sync_rule="no"
 task_template_has_md_sync_fields="no"
 
-if exists_file "README.md" && rg -n '文档导航|Documentation|Docs Index|Project Docs' "$ROOT/README.md" >/dev/null 2>&1; then
+if exists_file "README.md" && rg -n '文档导航|Documentation|Docs Index|Project Docs' "$PROJECT_AI_INIT_TARGET_ROOT/README.md" >/dev/null 2>&1; then
   readme_has_nav="yes"
 fi
 
-if exists_file "AGENTS.md" && rg -n '项目文档索引|Project Docs Index|关键 Markdown|Markdown 文档' "$ROOT/AGENTS.md" >/dev/null 2>&1; then
+if exists_file "AGENTS.md" && rg -n '项目文档索引|Project Docs Index|关键 Markdown|Markdown 文档' "$PROJECT_AI_INIT_TARGET_ROOT/AGENTS.md" >/dev/null 2>&1; then
   agents_has_docs_index="yes"
 fi
 
-if exists_file "AGENTS.md" && rg -n '计划|review|测试|复测|报告|交付|delivery|traceability|task record' "$ROOT/AGENTS.md" >/dev/null 2>&1; then
+if exists_file "AGENTS.md" && rg -n '计划|review|测试|复测|报告|交付|delivery|traceability|task record' "$PROJECT_AI_INIT_TARGET_ROOT/AGENTS.md" >/dev/null 2>&1; then
   agents_has_delivery_flow="yes"
 fi
 
-if exists_file "AGENTS.md" && rg -n '文档同步|Markdown 同步|无对应文档.*新建|skills/md-doc-sync/SKILL.md' "$ROOT/AGENTS.md" >/dev/null 2>&1; then
+if exists_file "AGENTS.md" && rg -n '文档同步|Markdown 同步|无对应文档.*新建|skills/md-doc-sync/SKILL.md' "$PROJECT_AI_INIT_TARGET_ROOT/AGENTS.md" >/dev/null 2>&1; then
   agents_has_md_sync_rule="yes"
 fi
 
-if exists_file "docs/AI_COLLAB_WORKFLOW.md" && rg -n '无对应文档.*新建|skills/md-doc-sync/SKILL.md|Markdown' "$ROOT/docs/AI_COLLAB_WORKFLOW.md" >/dev/null 2>&1; then
+if exists_file "docs/AI_COLLAB_WORKFLOW.md" && rg -n '无对应文档.*新建|skills/md-doc-sync/SKILL.md|Markdown' "$PROJECT_AI_INIT_TARGET_ROOT/docs/AI_COLLAB_WORKFLOW.md" >/dev/null 2>&1; then
   workflow_has_md_sync_rule="yes"
 fi
 
-if exists_file "docs/TASK_RECORD_TEMPLATE.md" && rg -n '同步更新文档|新建文档|未更新原因|Documentation Sync' "$ROOT/docs/TASK_RECORD_TEMPLATE.md" >/dev/null 2>&1; then
+if exists_file "docs/TASK_RECORD_TEMPLATE.md" && rg -n '同步更新文档|新建文档|未更新原因|Documentation Sync' "$PROJECT_AI_INIT_TARGET_ROOT/docs/TASK_RECORD_TEMPLATE.md" >/dev/null 2>&1; then
   task_template_has_md_sync_fields="yes"
+fi
+
+recommended_total_count=${#recommended_files[@]}
+recommended_present_count=$((recommended_total_count - ${#missing_recommended[@]}))
+quality_signal_total_count=6
+quality_signal_present_count=0
+
+for quality_flag in \
+  "$readme_has_nav" \
+  "$agents_has_docs_index" \
+  "$agents_has_delivery_flow" \
+  "$agents_has_md_sync_rule" \
+  "$workflow_has_md_sync_rule" \
+  "$task_template_has_md_sync_fields"; do
+  if [[ "$quality_flag" == "yes" ]]; then
+    quality_signal_present_count=$((quality_signal_present_count + 1))
+  fi
+done
+
+maturity_profile="bootstrap_needed"
+recommended_follow_up="project-ai-init"
+if ((${#missing_core[@]} == 0)) && ((quality_signal_present_count == quality_signal_total_count)) && ((recommended_present_count >= recommended_total_count - 1)); then
+  maturity_profile="mature_baseline"
 fi
 
 state="initialized"
@@ -201,9 +192,26 @@ elif ((${#missing_recommended[@]} > 0)) || ((${#missing_conditional[@]} > 0)) ||
   state="partial"
 fi
 
+case "$state" in
+  initialized)
+    recommended_follow_up="none"
+    ;;
+  partial)
+    if [[ "$maturity_profile" == "mature_baseline" ]]; then
+      recommended_follow_up="project-ai-audit"
+    fi
+    ;;
+esac
+
 printf "# AI Init Check\n\n"
-printf -- "- repository: %s\n" "$ROOT"
+printf -- "- repository: %s\n" "$PROJECT_AI_INIT_REPO_ROOT"
+printf -- "- target_root: %s\n" "$PROJECT_AI_INIT_TARGET_ROOT"
+printf -- "- scope: %s\n" "$PROJECT_AI_INIT_SCOPE"
 printf -- "- state: **%s**\n" "$state"
+printf -- "- maturity_profile: %s\n" "$maturity_profile"
+printf -- "- recommended_follow_up: %s\n" "$recommended_follow_up"
+printf -- "- recommended_docs_coverage: %s/%s\n" "$recommended_present_count" "$recommended_total_count"
+printf -- "- quality_signal_coverage: %s/%s\n" "$quality_signal_present_count" "$quality_signal_total_count"
 printf -- "- readme_has_docs_nav: %s\n" "$readme_has_nav"
 printf -- "- agents_has_docs_index: %s\n" "$agents_has_docs_index"
 printf -- "- agents_has_delivery_flow: %s\n" "$agents_has_delivery_flow"

@@ -13,10 +13,13 @@ Use this skill after initialization or when a repository claims to already suppo
 - Read `AGENTS.md`, `README.md`, `TESTING.md`, and the docs listed in README navigation.
 - Read a few recent task docs if `docs/tasks/` or similar directories exist.
 - Read package or build files only when needed to verify commands.
+- In monorepos, prefer one target at a time and use `--scope <app-or-package-path>` when auditing only one app or package.
 
 2. Run the audit check.
 - Execute `scripts/audit_ai_project.sh <repo-root>`.
+- In monorepos, use `scripts/audit_ai_project.sh <repo-root> --scope <app-or-package-path>` for target-local audit results.
 - Use the script as the baseline report, not the final conclusion.
+- Read `baseline_recommended_follow_up` first. If it says `project-ai-init`, treat initialization gaps as the blocking issue before doing a deeper audit discussion.
 
 3. Review effectiveness, not just existence.
 - Check whether task templates have been used in real task records.

@@ -23,7 +23,7 @@ Use this baseline when bootstrapping AI collaboration docs for a single reposito
 - `docs/DOMAIN_CONTEXT.md`
 - `docs/ROUTES_AND_ACCESS.md`
 - `docs/EVENT_AND_MESSAGE_FLOW.md`
-- `docs/INTEGRATION_DEPENDENCIES.md`
+- `docs/INTEGRATION_DEPENDENCIES.md` when strong integration signals exist, such as SDK directories, OpenAPI specs, `.proto` files, or explicit gRPC/protobuf usage
 
 Legacy equivalents accepted by the checker:
 - `docs/BUSINESS_SCENARIO_MAP.md`
@@ -45,3 +45,5 @@ Legacy equivalents accepted by the checker:
 - Prefer auditability: the repository should preserve plan, review, testing, retest, and delivery evidence.
 - Prefer neutral templates that can be refined for frontend, backend, SDK, CLI, library, or mixed repositories.
 - Enforce Markdown sync: when key files change, update docs; if no matching docs exist, create Markdown first.
+- In monorepos, prefer targeting one app or package at a time rather than initializing the whole repository by default.
+- If core docs, workflow quality signals, and most recommended docs already exist, prefer audit follow-up over another broad init pass. Missing conditional docs alone should not force a full re-bootstrap decision.

@@ -1,16 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${1:-.}"
-MODE="${2:-apply}" # apply | dry-run
-ROOT="$(cd "$ROOT" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=project_ai_init_common.sh
+source "$SCRIPT_DIR/project_ai_init_common.sh"
+
+ROOT="."
+MODE="apply" # apply | dry-run
+SCOPE="."
+
+while (($# > 0)); do
+  case "$1" in
+    apply|dry-run)
+      MODE="$1"
+      shift
+      ;;
+    --scope)
+      SCOPE="${2:?missing value for --scope}"
+      shift 2
+      ;;
+    --help|-h)
+      printf 'usage: %s [repo-root] [apply|dry-run] [--scope <path>]\n' "$(basename "$0")"
+      exit 0
+      ;;
+    *)
+      ROOT="$1"
+      shift
+      ;;
+  esac
+done
+
+project_ai_init_resolve_scope "$ROOT" "$SCOPE"
 
 say() { printf '%s\n' "$*"; }
 
 create_if_missing() {
   local rel="$1"
   local content="$2"
-  local abs="$ROOT/$rel"
+  local abs="$PROJECT_AI_INIT_TARGET_ROOT/$rel"
   if [[ -f "$abs" ]]; then
     say "[skip] $rel"
     return 0
@@ -22,59 +49,7 @@ create_if_missing() {
 }
 
 has_file() {
-  [[ -f "$ROOT/$1" ]]
-}
-
-matches_product_code() {
-  local pattern="$1"
-  rg -n \
-    --glob 'src/**' \
-    --glob 'app/**' \
-    --glob 'apps/**' \
-    --glob 'packages/**' \
-    --glob 'services/**' \
-    --glob 'server/**' \
-    --glob 'client/**' \
-    --glob 'clients/**' \
-    --glob 'api/**' \
-    --glob 'cmd/**' \
-    --glob 'pkg/**' \
-    --glob 'internal/**' \
-    --glob 'lib/**' \
-    --glob 'config/**' \
-    --glob '*.go' \
-    --glob '*.py' \
-    --glob '*.rb' \
-    --glob '*.php' \
-    --glob '*.js' \
-    --glob '*.jsx' \
-    --glob '*.ts' \
-    --glob '*.tsx' \
-    --glob '*.mjs' \
-    --glob '*.cjs' \
-    --glob '*.java' \
-    --glob '*.kt' \
-    --glob '*.rs' \
-    --glob '*.json' \
-    --glob '*.toml' \
-    --glob '*.yml' \
-    --glob '*.yaml' \
-    --glob '!node_modules/**' \
-    --glob '!.git/**' \
-    --glob '!dist/**' \
-    --glob '!build/**' \
-    --glob '!coverage/**' \
-    --glob '!docs/**' \
-    --glob '!skills/**' \
-    --glob '!scripts/**' \
-    --glob '!test/**' \
-    --glob '!tests/**' \
-    --glob '!**/*.md' \
-    "$pattern" "$ROOT" >/dev/null 2>&1
-}
-
-matches_product_path() {
-  rg --files "$ROOT" | rg -v '/(docs|skills|scripts|test|tests)/' | rg -n "$1" >/dev/null 2>&1
+  project_ai_init_target_file_exists "$1"
 }
 
 append_line() {
@@ -87,11 +62,11 @@ append_line() {
   fi
 }
 
-repo_name="$(basename "$ROOT")"
+repo_name="$(basename "$PROJECT_AI_INIT_TARGET_ROOT")"
 
 doc_language="zh-CN"
-if has_file "README.md" && rg -n '^(#|##|###)[[:space:]]+[A-Z][A-Za-z0-9 _:/()-]{3,}$' "$ROOT/README.md" >/dev/null 2>&1; then
-  if ! rg -n '[一-龥]' "$ROOT/README.md" >/dev/null 2>&1; then
+if has_file "README.md" && rg -n '^(#|##|###)[[:space:]]+[A-Z][A-Za-z0-9 _:/()-]{3,}$' "$PROJECT_AI_INIT_TARGET_ROOT/README.md" >/dev/null 2>&1; then
+  if ! rg -n '[一-龥]' "$PROJECT_AI_INIT_TARGET_ROOT/README.md" >/dev/null 2>&1; then
     doc_language="en"
   fi
 fi
@@ -121,7 +96,7 @@ fi
 if has_file "composer.json"; then
   stack_signals="$(append_line "$stack_signals" "php")"
 fi
-if [[ -d "$ROOT/apps" || -d "$ROOT/packages" || -f "$ROOT/pnpm-workspace.yaml" || -f "$ROOT/turbo.json" ]]; then
+if [[ -d "$PROJECT_AI_INIT_TARGET_ROOT/apps" || -d "$PROJECT_AI_INIT_TARGET_ROOT/packages" || -f "$PROJECT_AI_INIT_TARGET_ROOT/pnpm-workspace.yaml" || -f "$PROJECT_AI_INIT_TARGET_ROOT/turbo.json" ]]; then
   stack_signals="$(append_line "$stack_signals" "monorepo")"
 fi
 
@@ -135,22 +110,19 @@ has_events="no"
 has_integrations="no"
 has_domain_context="no"
 
-if matches_product_code 'react-router|vue-router|next/navigation|next/router|Route::|gin\.|mux\.|chi\.' || matches_product_path '(^|/)(routes?|router)\.(ts|js|tsx|jsx|mjs|cjs|py|go|rb|php)$|(^|/)urls\.py$'; then
+if project_ai_init_matches_product_code 'react-router|vue-router|next/navigation|next/router|Route::|gin\.|mux\.|chi\.' || project_ai_init_matches_product_path '(^|/)(routes?|router)\.(ts|js|tsx|jsx|mjs|cjs|py|go|rb|php)$|(^|/)urls\.py$'; then
   has_routes="yes"
 fi
 
-if matches_product_code 'websocket|socket\.io|WebSocket|event bus|eventbus|pubsub|pub/sub|message queue|kafka|rabbitmq|nats|consumer|producer|stream handler'; then
+if project_ai_init_matches_product_code 'websocket|socket\.io|WebSocket|event bus|eventbus|pubsub|pub/sub|message queue|kafka|rabbitmq|nats|consumer|producer|stream handler'; then
   has_events="yes"
 fi
 
-if [[ -d "$ROOT/sdk" || -d "$ROOT/integrations" || -d "$ROOT/clients" || -d "$ROOT/third_party" ]]; then
-  has_integrations="yes"
-fi
-if [[ "$has_integrations" == "no" ]] && matches_product_code 'openapi|swagger|grpc|protobuf|sdk|client[[:space:]_-]wrapper|third[- ]party|external api|axios\.create|fetch\('; then
+if project_ai_init_detect_integrations; then
   has_integrations="yes"
 fi
 
-if matches_product_code 'workflow|state machine|approval|审批|permission|权限|tenant|租户|role|状态流转|domain model|聚合|订单|支付|库存|subscription'; then
+if project_ai_init_matches_product_code 'workflow|state machine|approval|审批|permission|权限|tenant|租户|role|状态流转|domain model|聚合|订单|支付|库存|subscription'; then
   has_domain_context="yes"
 fi
 
@@ -158,7 +130,7 @@ detect_js_runner() {
   if has_file "package.json"; then
     local detected_pm=""
     if command -v python3 >/dev/null 2>&1; then
-      detected_pm="$(python3 - "$ROOT/package.json" <<'PY'
+      detected_pm="$(python3 - "$PROJECT_AI_INIT_TARGET_ROOT/package.json" <<'PY'
 import json
 import sys
 
@@ -202,7 +174,7 @@ test_commands=""
 js_runner="$(detect_js_runner)"
 
 if has_file "package.json" && command -v python3 >/dev/null 2>&1; then
-  js_script_lines="$(python3 - "$ROOT/package.json" "$js_runner" <<'PY'
+  js_script_lines="$(python3 - "$PROJECT_AI_INIT_TARGET_ROOT/package.json" "$js_runner" <<'PY'
 import json
 import sys
 
@@ -290,7 +262,7 @@ if has_file "build.gradle" || has_file "build.gradle.kts"; then
   fi
 fi
 
-if has_file "Makefile" && rg -n '^test:' "$ROOT/Makefile" >/dev/null 2>&1; then
+if has_file "Makefile" && rg -n '^test:' "$PROJECT_AI_INIT_TARGET_ROOT/Makefile" >/dev/null 2>&1; then
   if [[ "$doc_language" == "en" ]]; then
     test_commands="$(append_line "$test_commands" "- make test: \`make test\`")"
   else
@@ -976,7 +948,7 @@ create_if_missing "docs/GIT_COMMIT_GUIDE.md" "$git_commit_guide_content"
 create_if_missing "docs/LINT_AND_BUILD_KNOWN_ISSUES.md" "$issues_content"
 create_if_missing "skills/md-doc-sync/SKILL.md" "$md_sync_skill_content"
 
-if [[ "$has_domain_context" == "yes" ]] && [[ ! -f "$ROOT/docs/BUSINESS_SCENARIO_MAP.md" ]]; then
+if [[ "$has_domain_context" == "yes" ]] && [[ ! -f "$PROJECT_AI_INIT_TARGET_ROOT/docs/BUSINESS_SCENARIO_MAP.md" ]]; then
   create_if_missing "docs/DOMAIN_CONTEXT.md" "$domain_context_content"
 fi
 
@@ -984,21 +956,21 @@ if [[ "$has_routes" == "yes" ]]; then
   create_if_missing "docs/ROUTES_AND_ACCESS.md" "$routes_access_content"
 fi
 
-if [[ "$has_events" == "yes" ]] && [[ ! -f "$ROOT/docs/SOCKET_PROTOCOL_MAP.md" ]]; then
+if [[ "$has_events" == "yes" ]] && [[ ! -f "$PROJECT_AI_INIT_TARGET_ROOT/docs/SOCKET_PROTOCOL_MAP.md" ]]; then
   create_if_missing "docs/EVENT_AND_MESSAGE_FLOW.md" "$event_flow_content"
 fi
 
-if [[ "$has_integrations" == "yes" ]] && [[ ! -f "$ROOT/docs/SDK_USAGE.md" ]]; then
+if [[ "$has_integrations" == "yes" ]] && [[ ! -f "$PROJECT_AI_INIT_TARGET_ROOT/docs/SDK_USAGE.md" ]]; then
   create_if_missing "docs/INTEGRATION_DEPENDENCIES.md" "$integration_dependencies_content"
 fi
 
 if has_file "README.md"; then
-  if rg -n '文档导航|Documentation|Docs Index|Project Docs' "$ROOT/README.md" >/dev/null 2>&1; then
+  if rg -n '文档导航|Documentation|Docs Index|Project Docs' "$PROJECT_AI_INIT_TARGET_ROOT/README.md" >/dev/null 2>&1; then
     say "[skip] README.md docs nav"
   else
     say "[append] README.md docs nav"
     if [[ "$MODE" != "dry-run" ]]; then
-      printf '\n%s\n' "$readme_nav_section" >> "$ROOT/README.md"
+      printf '\n%s\n' "$readme_nav_section" >> "$PROJECT_AI_INIT_TARGET_ROOT/README.md"
     fi
   fi
 else
@@ -1007,4 +979,4 @@ else
 $readme_nav_section"
 fi
 
-say "[done] mode=$MODE root=$ROOT"
+say "[done] mode=$MODE repo_root=$PROJECT_AI_INIT_REPO_ROOT target_root=$PROJECT_AI_INIT_TARGET_ROOT scope=$PROJECT_AI_INIT_SCOPE"
