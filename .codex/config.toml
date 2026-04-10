@@ -50,6 +50,12 @@ trust_level = "trusted"
 [projects."/"]
 trust_level = "trusted"
 
+[projects."/Users/zpp/Desktop"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/learn-claude-code"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
@@ -109,4 +115,7 @@ nickname_candidates = ["Audit", "Guard", "Check"]
 enabled = true
 
 [plugins."build-web-apps@openai-curated"]
+enabled = true
+
+[plugins."github@openai-curated"]
 enabled = true
