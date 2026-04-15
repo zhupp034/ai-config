@@ -22,7 +22,7 @@ If there is a matching notes file under `/Users/zpp/Desktop/workspace/weekly-rep
 ## Workflow
 
 1. Run `python3 scripts/generate_weekly_report_summary.py`.
-2. Let the script invoke the ZenTao refresh step first; pass `--zentao-account` / `--zentao-password` explicitly or provide `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` in the environment.
+2. Let the script invoke the ZenTao refresh step first; pass `--zentao-account` / `--zentao-password` explicitly, provide `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` in the environment, or store them in `~/.codex/secrets/common.env`.
 3. Let the script invoke the existing `git-weekly-summary` generator with `--write-report --write-json-report` before doing any summarization.
 4. Build the weekly report from upstream repo `themes`; if `themes.analysis` exists, use `completed_sections` / `project_summary` / `risks` / `next_steps` / `reflections` first.
 5. Review the resulting weekly report draft on stdout.

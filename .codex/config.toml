@@ -1,4 +1,4 @@
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 model = "gpt-5.4"
 
 [profiles.clean]
@@ -54,6 +54,15 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/zpp/Desktop/github/learn-claude-code"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/outlookEmail"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-repository"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/repository"]
 trust_level = "trusted"
 
 [notice.model_migrations]

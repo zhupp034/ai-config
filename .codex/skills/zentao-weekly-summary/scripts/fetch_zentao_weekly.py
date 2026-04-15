@@ -13,6 +13,28 @@ from pathlib import Path
 
 DEFAULT_BASE_URL = "http://192.168.20.9/pro/"
 DEFAULT_NOTES_DIR = Path("/Users/zpp/Desktop/workspace/weekly-report-notes")
+COMMON_ENV_PATH = Path.home() / ".codex" / "secrets" / "common.env"
+
+
+def load_common_env(path: Path = COMMON_ENV_PATH) -> None:
+    if not path.exists():
+        return
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip()
+
+
+load_common_env()
 
 
 def parse_args():
@@ -193,7 +215,7 @@ def write_note(lines, notes_dir, since):
 def main():
     args = parse_args()
     if not args.account or not args.password:
-        print("Missing ZENTAO_ACCOUNT or ZENTAO_PASSWORD.", file=sys.stderr)
+        print("Missing ZENTAO_ACCOUNT or ZENTAO_PASSWORD; ~/.codex/secrets/common.env is also supported.", file=sys.stderr)
         return 1
 
     now = datetime.now()

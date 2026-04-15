@@ -11,9 +11,13 @@ from create_zentao_tasks import (
     ZenTaoClient,
     apply_workday_shift,
     format_number,
+    load_common_env,
     parse_work_items,
     schedule_items,
 )
+
+
+load_common_env()
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,7 +91,7 @@ def main() -> int:
     account = os.environ.get("ZENTAO_ACCOUNT")
     password = os.environ.get("ZENTAO_PASSWORD")
     if not account or not password:
-        raise SystemExit("ZENTAO_ACCOUNT and ZENTAO_PASSWORD must be set")
+        raise SystemExit("ZENTAO_ACCOUNT and ZENTAO_PASSWORD must be set; ~/.codex/secrets/common.env is also supported")
 
     assigned_to = args.assigned_to or account
     client = ZenTaoClient(args.base_url, account, password)

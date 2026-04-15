@@ -10,12 +10,35 @@ import sys
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable
 
 
 DEFAULT_BASE_URL = "http://192.168.20.9/pro/"
 SUCCESS_MARKER = "保存成功"
 HOUR_PATTERN = re.compile(r"^(?P<title>.+?)(?:\t+|\s+)(?P<hours>\d+(?:\.\d+)?)$")
+COMMON_ENV_PATH = Path.home() / ".codex" / "secrets" / "common.env"
+
+
+def load_common_env(path: Path = COMMON_ENV_PATH) -> None:
+    if not path.exists():
+        return
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip()
+
+
+load_common_env()
 
 
 @dataclass
@@ -338,7 +361,7 @@ def main() -> int:
     account = os.environ.get("ZENTAO_ACCOUNT")
     password = os.environ.get("ZENTAO_PASSWORD")
     if not account or not password:
-        raise SystemExit("ZENTAO_ACCOUNT and ZENTAO_PASSWORD must be set")
+        raise SystemExit("ZENTAO_ACCOUNT and ZENTAO_PASSWORD must be set; ~/.codex/secrets/common.env is also supported")
 
     assigned_to = args.assigned_to or account
     client = ZenTaoClient(args.base_url, account, password)

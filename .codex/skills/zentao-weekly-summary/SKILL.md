@@ -11,7 +11,7 @@ Use `scripts/fetch_zentao_weekly.py` to log in to ZenTao, collect this week's pe
 
 ## Workflow
 
-1. Set environment variables before running:
+1. Set environment variables before running, or store the same keys in `~/.codex/secrets/common.env`:
    - `ZENTAO_BASE_URL`
    - `ZENTAO_ACCOUNT`
    - `ZENTAO_PASSWORD`

@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from create_zentao_tasks import DEFAULT_BASE_URL, ZenTaoClient
+from create_zentao_tasks import DEFAULT_BASE_URL, ZenTaoClient, load_common_env
 
 DEFAULT_GIT_ROOT = Path("/Users/zpp/Desktop/gitlab")
 DEFAULT_TASK_PAGE = "my-task-assignedTo.html"
@@ -32,6 +32,9 @@ PAGER_PATTERN = re.compile(
     r"data-rec-total='(?P<total>\d+)'.*?data-rec-per-page='(?P<per_page>\d+)'.*?data-page='(?P<page>\d+)'.*?data-link-creator='(?P<link>[^']+)'",
     re.S,
 )
+
+
+load_common_env()
 
 
 @dataclass(frozen=True)
@@ -712,7 +715,7 @@ def main() -> int:
     account = os.environ.get("ZENTAO_ACCOUNT")
     password = os.environ.get("ZENTAO_PASSWORD")
     if not account or not password:
-        raise SystemExit("ZENTAO_ACCOUNT and ZENTAO_PASSWORD must be set")
+        raise SystemExit("ZENTAO_ACCOUNT and ZENTAO_PASSWORD must be set; ~/.codex/secrets/common.env is also supported")
 
     report = load_git_report(args.root, since, until)
     commits = build_commit_records(report, args.diff_char_limit, args.skip_diff)

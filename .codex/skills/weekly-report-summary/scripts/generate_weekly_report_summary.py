@@ -47,6 +47,28 @@ LOCAL_GLOSSARY_PATH = Path(
     )
 ).resolve()
 _GIT_WEEKLY_SUMMARY_MODULE = None
+COMMON_ENV_PATH = CODEX_HOME / "secrets" / "common.env"
+
+
+def load_common_env(path: Path = COMMON_ENV_PATH) -> None:
+    if not path.exists():
+        return
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = value.strip()
+
+
+load_common_env()
 
 
 def parse_args():
@@ -154,7 +176,7 @@ def refresh_zentao_notes(notes_dir, base_url=None, account=None, password=None, 
         return
     if not account or not password:
         print(
-            "[zentao-refresh-skipped] missing ZenTao credentials; pass --zentao-account/--zentao-password or export ZENTAO_ACCOUNT/ZENTAO_PASSWORD",
+            "[zentao-refresh-skipped] missing ZenTao credentials; pass --zentao-account/--zentao-password, export ZENTAO_ACCOUNT/ZENTAO_PASSWORD, or store them in ~/.codex/secrets/common.env",
             file=sys.stderr,
         )
         return

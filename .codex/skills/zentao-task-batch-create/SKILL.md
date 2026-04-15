@@ -43,7 +43,7 @@ If the user provides a parent task ID, create child tasks under that parent task
 
 ## Workflow
 
-1. Set environment variables:
+1. Set environment variables, or store the same keys in `~/.codex/secrets/common.env`:
    - `ZENTAO_BASE_URL`
    - `ZENTAO_ACCOUNT`
    - `ZENTAO_PASSWORD`
