@@ -1,4 +1,4 @@
-model_reasoning_effort = "medium"
+model_reasoning_effort = "xhigh"
 model = "gpt-5.4"
 
 [profiles.clean]
@@ -63,6 +63,12 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/zpp/Desktop/gitlab/repository"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/mac-notify-helper"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/app-nodejs-demo"]
 trust_level = "trusted"
 
 [notice.model_migrations]
