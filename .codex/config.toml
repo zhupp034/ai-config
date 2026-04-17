@@ -1,5 +1,7 @@
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "medium"
 model = "gpt-5.4"
+
+notify = ["/Users/zpp/.codex/plugins/cache/openai-bundled/computer-use/1.0.750/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
 
 [profiles.clean]
 web_search = "disabled"
@@ -71,6 +73,12 @@ trust_level = "trusted"
 [projects."/Users/zpp/Desktop/github/app-nodejs-demo"]
 trust_level = "trusted"
 
+[projects."/Users/zpp/Desktop/基金文档"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/基金文档"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
@@ -134,3 +142,11 @@ enabled = true
 
 [plugins."github@openai-curated"]
 enabled = true
+
+[plugins."computer-use@openai-bundled"]
+enabled = true
+
+[marketplaces.openai-bundled]
+last_updated = "2026-04-17T08:56:29Z"
+source_type = "local"
+source = "/Users/zpp/.codex/.tmp/bundled-marketplaces/openai-bundled"
