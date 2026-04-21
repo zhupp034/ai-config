@@ -707,10 +707,22 @@ def build_completed_sections(active_repos, extra_notes):
 
 def build_project_sections(active_repos, glossary):
     sections = []
+    merged = []
+    index_by_lines = {}
     ordered_repos = sorted(active_repos, key=lambda repo: (-repo["commit_count"], repo["name"]))
     for repo in ordered_repos:
         repo_lines = render_repo_themes(repo) if repo_theme_items(repo) else render_repo_summary(repo)
-        sections.append((format_term(repo["name"], glossary), repo_lines))
+        repo_name = format_term(repo["name"], glossary)
+        lines_key = tuple(repo_lines)
+        existing_index = index_by_lines.get(lines_key)
+        if existing_index is None:
+            index_by_lines[lines_key] = len(merged)
+            merged.append(([repo_name], repo_lines))
+            continue
+        merged[existing_index][0].append(repo_name)
+
+    for repo_names, repo_lines in merged:
+        sections.append((" / ".join(repo_names), repo_lines))
     return sections
 
 

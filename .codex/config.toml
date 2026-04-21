@@ -1,4 +1,4 @@
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 model = "gpt-5.4"
 
 notify = ["/Users/zpp/.codex/plugins/cache/openai-bundled/computer-use/1.0.750/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
@@ -79,6 +79,12 @@ trust_level = "trusted"
 [projects."/Users/zpp/Desktop/github/基金文档"]
 trust_level = "trusted"
 
+[projects."/Users/zpp/Desktop/gitlab/interact-classroom"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/equipment-management"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
@@ -116,6 +122,8 @@ url = "https://mcp.notion.com/mcp"
 
 [features]
 multi_agent = true
+memories = true
+chronicle = false
 
 [agents]
 max_threads = 4
@@ -147,6 +155,6 @@ enabled = true
 enabled = true
 
 [marketplaces.openai-bundled]
-last_updated = "2026-04-17T08:56:29Z"
+last_updated = "2026-04-21T08:06:12Z"
 source_type = "local"
 source = "/Users/zpp/.codex/.tmp/bundled-marketplaces/openai-bundled"

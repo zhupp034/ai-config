@@ -147,6 +147,50 @@ class WeeklyReportSummaryTests(unittest.TestCase):
         self.assertIn("本周重点处理课堂侧 WebSocket 重连与状态清理逻辑。", joined)
         self.assertNotIn("旧 summary", joined)
 
+    def test_build_project_sections_should_merge_identical_repo_summaries(self):
+        glossary = {}
+        active_repos = [
+            {
+                "name": "micro-frontends-beike",
+                "commit_count": 2,
+                "themes": [
+                    {
+                        "title": "依赖配置（package.json） / pnpm-lock.yaml",
+                        "analysis": {
+                            "project_summary": [
+                                "处理了 React 与类型约束相关问题，并同步调整 Babel 实现细节。"
+                            ]
+                        },
+                    }
+                ],
+                "commits": [],
+            },
+            {
+                "name": "micro-frontends-web",
+                "commit_count": 2,
+                "themes": [
+                    {
+                        "title": "依赖配置（package.json） / pnpm-lock.yaml",
+                        "analysis": {
+                            "project_summary": [
+                                "处理了 React 与类型约束相关问题，并同步调整 Babel 实现细节。"
+                            ]
+                        },
+                    }
+                ],
+                "commits": [],
+            },
+        ]
+
+        sections = MODULE.build_project_sections(active_repos, glossary)
+
+        self.assertEqual(1, len(sections))
+        self.assertEqual("micro-frontends-beike / micro-frontends-web", sections[0][0])
+        self.assertEqual(
+            ["- 处理了 React 与类型约束相关问题，并同步调整 Babel 实现细节。"],
+            sections[0][1],
+        )
+
     def test_theme_analysis_risk_and_next_steps_should_suppress_generic_fallbacks(self):
         active_repos = [
             {
