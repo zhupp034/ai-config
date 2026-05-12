@@ -1,0 +1,6 @@
+interface:
+  display_name: "Leke JSP Common Config"
+  short_description: "Trace shared JSP menus and page config"
+  default_prompt: "Use $leke-jsp-common-config to find and update the shared JSP page configuration behind this Leke page."
+policy:
+  allow_implicit_invocation: true

@@ -1,8 +1,10 @@
 model_reasoning_effort = "medium"
-model = "gpt-5.4"
+
+model = "gpt-5.5"
 
 
-notify = ["/Users/zpp/.codex/plugins/cache/openai-bundled/computer-use/1.0.755/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
+notify = ["/Users/zpp/.codex/plugins/cache/openai-bundled/computer-use/1.0.758/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
+model_provider = "cmp_1778500894047_1"
 
 [profiles.clean]
 web_search = "disabled"
@@ -89,6 +91,15 @@ trust_level = "trusted"
 [projects."/Users/zpp/Desktop/github/deep-student"]
 trust_level = "trusted"
 
+[projects."/Users/zpp/Desktop/gitlab/DeepTutor-main"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/CLIProxyAPI"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-question"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
@@ -155,10 +166,50 @@ enabled = true
 [plugins."github@openai-curated"]
 enabled = true
 
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
 [plugins."computer-use@openai-bundled"]
 enabled = true
 
+[plugins."browser-use@openai-bundled"]
+enabled = true
+
+[plugins."chrome@openai-bundled"]
+enabled = true
+
 [marketplaces.openai-bundled]
-last_updated = "2026-04-22T08:46:29Z"
+last_updated = "2026-05-12T07:34:25Z"
 source_type = "local"
 source = "/Users/zpp/.codex/.tmp/bundled-marketplaces/openai-bundled"
+
+[marketplaces.openai-primary-runtime]
+last_updated = "2026-05-07T08:50:45Z"
+source_type = "local"
+source = "/Users/zpp/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
+
+
+[model_providers.Model_Studio_Token_Plan]
+name = "Model_Studio_Token_Plan"
+base_url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+env_key = "OPENAI_API_KEY"
+wire_api = "responses"
+
+# 这一行告诉 Codex 默认使用上面的配置
+model_provider = "Model_Studio_Token_Plan"
+model = "qwen3.6-plus"
+
+[model_providers.cmp_1778500894047_1]
+name = "自建"
+base_url = "http://192.168.25.63:8317/v1"
+wire_api = "responses"
+requires_openai_auth = true
+
+[memories]
+disable_on_external_context = true
