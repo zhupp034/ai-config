@@ -1,12 +1,10 @@
-model_reasoning_effort = "medium"
-
-model = "gpt-5.5"
-
+model_reasoning_effort = "high"
 
 personality = "pragmatic"
 
 notify = ["/Users/zpp/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
-model_provider = "codex_local_access"
+service_tier = "default"
+model = "gpt-5.6-sol"
 
 [profiles.clean]
 web_search = "disabled"
@@ -78,12 +76,6 @@ trust_level = "trusted"
 [projects."/Users/zpp/Desktop/github/app-nodejs-demo"]
 trust_level = "trusted"
 
-[projects."/Users/zpp/Desktop/基金文档"]
-trust_level = "trusted"
-
-[projects."/Users/zpp/Desktop/github/基金文档"]
-trust_level = "trusted"
-
 [projects."/Users/zpp/Desktop/gitlab/interact-classroom"]
 trust_level = "trusted"
 
@@ -102,23 +94,70 @@ trust_level = "trusted"
 [projects."/Users/zpp/Desktop/gitlab/leke-question"]
 trust_level = "trusted"
 
+[projects."/Users/zpp/Downloads"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/node-class-test"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-paper"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-scripts-business"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-beike"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-learn"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/incentive-myGrowth"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/gitlab/leke-lesson"]
+trust_level = "trusted"
+
+[projects."/Users/zpp/Desktop/github/基金文档"]
+trust_level = "trusted"
+
 [notice.model_migrations]
 "gpt-5.2-codex" = "gpt-5.3-codex"
 
 [mcp_servers.playwright]
-type = "stdio"
 command = "npx"
 args = ["@playwright/mcp@latest"]
+
+[mcp_servers.playwright.tools.browser_evaluate]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_navigate]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_run_code_unsafe]
+approval_mode = "approve"
+
+[mcp_servers.playwright.tools.browser_tabs]
+approval_mode = "approve"
 
 [mcp_servers.-]
 url = "https://anycross.feishu.cn/mcp/openplatform_query/stream?key=nZ7yDqc1_fg6hSBAGJypqmUnCAgWNHIiqwYZ2qGjfmZ4kJfBmqGt_riGvR0n9ZLP"
 
-[mcp_servers.figma]
-url = "https://mcp.figma.com/mcp"
-
 [mcp_servers.chrome-devtools]
 command = "npx"
 args = ["chrome-devtools-mcp@latest"]
+
+[mcp_servers.chrome-devtools.tools.evaluate_script]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.navigate_page]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.new_page]
+approval_mode = "approve"
+
+[mcp_servers.chrome-devtools.tools.take_snapshot]
+approval_mode = "approve"
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
@@ -127,9 +166,8 @@ url = "https://developers.openai.com/mcp"
 approval_mode = "approve"
 
 [mcp_servers.apifox_user_api]
-args = ["-y", "apifox-mcp-server@latest", "--project-id=7930557"]
 command = "npx"
-enabled = true
+args = ["-y", "apifox-mcp-server@latest", "--project-id=7930557"]
 
 [mcp_servers.apifox_user_api.env]
 APIFOX_ACCESS_TOKEN = "afxp_8dc548PQmlpruCsbLKacOfccXIwXdQQqvViD"
@@ -137,10 +175,35 @@ APIFOX_ACCESS_TOKEN = "afxp_8dc548PQmlpruCsbLKacOfccXIwXdQQqvViD"
 [mcp_servers.notion]
 url = "https://mcp.notion.com/mcp"
 
-[features]
-multi_agent = true
-memories = true
-chronicle = false
+[mcp_servers.node_repl]
+args = []
+command = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl"
+startup_timeout_sec = 120
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules"
+NODE_REPL_NODE_PATH = "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/zpp/.codex"
+CODEX_HOME = "/Users/zpp/.codex"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "57ee77a283eb230c6c6d47353af13a25cec4c331b511868c8fbf7ccd3dd1b2f6,6d25aa7656feac858f3a3bdaea5bcbab0dbfd426c9de8e6931ce90c399ee8e4f"
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+NODE_REPL_INSTRUCTIONS_USE_CASE_BROWSER = "Control the in-app browser in conjunction with the Browser Plugin."
+NODE_REPL_INSTRUCTIONS_USE_CASE_CHROME = "Control the Chrome browser in conjunction with the Chrome Plugin. Prefer this method of controlling Chrome over alternatives (such as Computer Use) unless the user explicitly mentions an alternative."
+NODE_REPL_INSTRUCTIONS_USE_CASE_COMPUTER_USE = "Control desktop apps on macOS through Computer Use."
+BROWSER_USE_CODEX_APP_BUILD_FLAVOR = "prod"
+BROWSER_USE_CODEX_APP_VERSION = "26.707.71524"
+SKY_CUA_SERVICE_PATH = "/Users/zpp/.codex/plugins/cache/openai-bundled/computer-use/1.0.1000387/Codex Computer Use.app"
+CODEX_CLI_PATH = "/Applications/ChatGPT.app/Contents/Resources/codex"
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+
+[mcp_servers.computer-use]
+command = "./Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient"
+args = ["mcp"]
+cwd = "."
+enabled = false
 
 [agents]
 max_threads = 4
@@ -177,34 +240,62 @@ enabled = true
 [plugins."presentations@openai-primary-runtime"]
 enabled = true
 
+[plugins."figma@openai-curated"]
+enabled = true
+
 [plugins."computer-use@openai-bundled"]
 enabled = true
 
-[plugins."browser@openai-bundled"]
+[plugins."pdf@openai-primary-runtime"]
 enabled = true
 
 [plugins."chrome@openai-bundled"]
 enabled = true
 
+[plugins."template-creator@openai-primary-runtime"]
+enabled = true
+
+[plugins."sites@openai-bundled"]
+enabled = true
+
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
 [marketplaces.openai-bundled]
-last_updated = "2026-05-19T02:04:39Z"
+last_updated = "2026-07-14T03:13:25Z"
 source_type = "local"
 source = "/Users/zpp/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-05-19T01:50:14Z"
+last_updated = "2026-07-10T02:52:07Z"
 source_type = "local"
 source = "/Users/zpp/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
 [memories]
 disable_on_external_context = true
 
-[model_providers]
+[desktop]
+sansFontSize = 15
+codeFontSize = 14
+localeOverride = "zh-CN"
+preventSleepWhileRunning = true
+keepRemoteControlAwakeWhilePluggedIn = true
+selected-avatar-id = "seedy"
+followUpQueueMode = "queue"
+dock-icon-preference = "codex-system"
+conversationDetailMode = "STEPS_COMMANDS"
 
-[model_providers.codex_local_access]
-name = "Sub2api"
-base_url = "http://192.168.25.63:18080/v1"
-wire_api = "responses"
-requires_openai_auth = true
-experimental_bearer_token = "sk-6d5018d05b1827b2f38c2f5787b2967476761c592778ffe4eda4e645abf207e3"
-supports_websockets = false
+[desktop.open-in-target-preferences]
+global = "vscode"
+
+[desktop.open-in-target-preferences.perPath]
+"/Users/zpp/Desktop/github/app-nodejs-demo" = "vscode"
+"/Users/zpp/Desktop/gitlab/ai-xiaole" = "fileManager"
+"/Users/zpp/Desktop/gitlab/interact-classroom" = "fileManager"
+"/Users/zpp/Desktop/gitlab/node-class-test" = "vscode"
+
+[features]
+js_repl = false
