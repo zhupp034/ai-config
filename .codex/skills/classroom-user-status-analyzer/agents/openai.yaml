@@ -1,0 +1,4 @@
+interface:
+  display_name: "课堂用户状态分析"
+  short_description: "解析互动课堂日志中的用户数组、权限位、角色和实时状态详情"
+  default_prompt: "使用 $classroom-user-status-analyzer 分析这份日志里指定用户的完整状态。"

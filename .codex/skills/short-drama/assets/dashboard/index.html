@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>短剧创作台</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="回到创作台顶部">
+      <span class="brand-mark" aria-hidden="true">场</span>
+      <span><small>导演工作稿</small><h1 class="brand-title">短剧创作台</h1></span>
+    </a>
+    <div class="project-tools">
+      <div id="workspaceStatus" aria-live="polite"></div>
+      <label class="project-picker">
+        <span>正在创作</span>
+        <select id="projects" aria-label="选择短剧项目"></select>
+      </label>
+    </div>
+  </header>
+
+  <main id="mainContent" tabindex="-1">
+    <section class="creator-desk" aria-label="创作内容">
+      <aside class="content-nav">
+        <div class="content-nav-heading">
+          <div><span class="kicker">内容目录</span><h2>本剧内容</h2></div>
+          <label class="creator-search"><span class="sr-only">搜索内容标题或集数</span><input id="search" type="search" placeholder="搜索标题或集数"></label>
+        </div>
+        <div id="contentList" class="content-list" aria-live="polite"></div>
+      </aside>
+
+      <section id="documentPane" class="document-pane" aria-labelledby="filename">
+        <div class="document-toolbar">
+          <div class="file-identity">
+            <span id="fileKind" class="kicker">创作正文</span>
+            <h2 id="filename">创作内容</h2>
+            <span id="fileMeta" class="file-meta"></span>
+          </div>
+          <div class="toolbar-actions">
+            <button id="editMode" class="secondary" aria-pressed="false" disabled>修改正文</button>
+            <button id="save" class="primary" disabled>已保存</button>
+          </div>
+        </div>
+        <div class="content-stage">
+          <textarea id="editor" hidden disabled spellcheck="false" aria-label="内容编辑器"></textarea>
+          <article id="preview" class="document-preview empty-document" aria-label="内容预览"></article>
+          <div id="media" class="media" hidden></div>
+        </div>
+        <footer class="document-footer"><div id="message" role="status" aria-live="polite"></div><span>⌘/Ctrl + S 保存</span></footer>
+      </section>
+    </section>
+
+    <section id="assistRow" class="assist-row" aria-label="创作辅助" hidden>
+      <article id="taskSummary" class="assist-card" aria-live="polite"></article>
+      <article id="exportSummary" class="assist-card" aria-live="polite"></article>
+    </section>
+  </main>
+
+  <div id="notices" class="notices" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
