@@ -23,3 +23,8 @@ prefix_rule(pattern=["/Users/zpp/.npm/_npx/31e32ef8478fbf80/node_modules/.bin/pl
 prefix_rule(pattern=["cd", "/Users/zpp/Desktop/gitlab/lekeoperationsys"], decision="allow")
 prefix_rule(pattern=["/bin/zsh", "-lc", "cd /Users/zpp/Desktop/gitlab/lekeoperationsys && git pull --rebase origin dev-migrate-261009 2>&1 | tail -15"], decision="allow")
 prefix_rule(pattern=["git", "pull", "--ff-only", "origin", "testing-2-common"], decision="allow")
+prefix_rule(pattern=["git", "fetch"], decision="allow")
+prefix_rule(pattern=["git", "pull", "--rebase", "--autostash"], decision="allow")
+prefix_rule(pattern=["git", "diff", "--cached", "--check"], decision="allow")
+prefix_rule(pattern=["scutil", "--dns"], decision="allow")
+prefix_rule(pattern=["git", "pull", "--ff-only"], decision="allow")
